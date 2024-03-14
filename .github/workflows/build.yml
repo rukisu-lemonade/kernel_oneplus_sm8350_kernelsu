@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: run build script
         run: |
@@ -19,7 +19,7 @@ jobs:
           ./build.sh
           
       - name: upload kernel 
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-kernel
           path: |
