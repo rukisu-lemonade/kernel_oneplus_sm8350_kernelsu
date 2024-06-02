@@ -36,7 +36,7 @@ git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kern
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
 cd $BASE_PATH
 
 #build
