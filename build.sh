@@ -13,7 +13,7 @@ sudo apt install -y elfutils libarchive-tools
 
 #libufdt
 echo ">clone libufdt"
-git clone --branch android14-qpr2-release --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
+git clone --branch android15.0.0_r5 --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
 
 #AnyKernel3
 echo ">clone AnyKernel3"
@@ -43,7 +43,7 @@ cd $BASE_PATH
 echo ">build kernel"
 cd kernel
 export PATH="$BASE_PATH/toolchain/bin:${PATH}"
-MAKE_ARGS="CC=clang O=out ARCH=arm64 LLVM=1 LLVM_IAS=1"
+MAKE_ARGS="CC=clang O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 CFLAGS=-Wno-enum-compare"
 make $MAKE_ARGS "vendor/lahaina-qgki_defconfig"
 make $MAKE_ARGS -j"$(nproc --all)"
 cd $BASE_PATH
