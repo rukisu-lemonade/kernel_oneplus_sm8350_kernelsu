@@ -1,5 +1,15 @@
 #!/bin/sh
 
+SUSFS=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --with-susfs)
+      SUSFS=true
+      shift # past argument
+      ;;
+  esac
+done
+
 BASE_PATH=$(pwd)
 export KBUILD_BUILD_HOST=github
 export KBUILD_BUILD_USER=github
@@ -39,6 +49,22 @@ cd kernel
 curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
 git apply ../0001-backport-path-umount.patch
 cd $BASE_PATH
+
+#SUSFS
+if [[ $SUSFS == "true" ]]; then
+  echo ">clone SUSFS and patch the kernel"
+  git clone --branch kernel-5.4 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
+  cp susfs/kernel_patches/fs/* kernel/common/fs/
+  cp susfs/kernel_patches/include/linux/* kernel/common/include/linux/
+  cd kernel/KernelSU
+  patch -p1 < ../../susfs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+  cd ../
+  patch -p1 < ../susfs/kernel_patches/50_add_susfs_in_kernel-5.4.patch
+  echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  cd $BASE_PATH
+fi
 
 #build
 echo ">build kernel"
