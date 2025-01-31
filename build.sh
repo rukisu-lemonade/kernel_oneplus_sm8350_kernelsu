@@ -13,7 +13,7 @@ sudo apt install -y elfutils libarchive-tools
 
 #libufdt
 echo ">clone libufdt"
-git clone --branch android15.0.0_r5 --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
+git clone --branch android15.0.0_r10 --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
 
 #AnyKernel3
 echo ">clone AnyKernel3"
@@ -36,7 +36,8 @@ git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kern
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+git apply ../0001-backport-path-umount.patch
 cd $BASE_PATH
 
 #build
