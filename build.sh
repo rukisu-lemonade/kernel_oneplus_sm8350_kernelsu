@@ -23,7 +23,7 @@ sudo apt install -y elfutils libarchive-tools
 
 #libufdt
 echo ">clone libufdt"
-git clone --branch android15.0.0_r10 --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
+git clone --branch android14-qpr2-release --depth 1 "https://android.googlesource.com/platform/system/libufdt.git" libufdt 
 
 #AnyKernel3
 echo ">clone AnyKernel3"
