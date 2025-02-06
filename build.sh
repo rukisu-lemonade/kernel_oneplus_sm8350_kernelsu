@@ -1,10 +1,15 @@
 #!/bin/sh
 
 SUSFS=false
+LEGACY=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
       SUSFS=true
+      shift # past argument
+      ;;
+    --legacy)
+      LEGACY=true
       shift # past argument
       ;;
   esac
@@ -46,9 +51,15 @@ git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kern
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/magic/kernel/setup.sh" | bash -s magic
+if [[ $LEGACY == "true" ]]; then
+  curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/legacy/kernel/setup.sh" | bash -s legacy
+else
+  curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/magic/kernel/setup.sh" | bash -s magic
+fi
 git apply ../0001-backport-path-umount.patch
-git apply ../0002-backport-strncpy-from-user-nofault.patch
+if [[ $LEGACY == "false" ]]; then
+  git apply ../0002-backport-strncpy-from-user-nofault.patch
+fi
 cd $BASE_PATH
 
 #SUSFS
