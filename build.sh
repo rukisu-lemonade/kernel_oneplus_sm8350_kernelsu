@@ -45,7 +45,6 @@ git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kern
 
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
-curl --output 0001-backport-path-umount.patch "https://github.com/xiaomi-sdm678/android_kernel_xiaomi_mojito/commit/2d514220cd262a772b35fae79358167ae1de9872.diff"
 cd kernel
 curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/magic/kernel/setup.sh" | bash -s magic
 git apply ../0001-backport-path-umount.patch
