@@ -25,8 +25,8 @@ index 3744372a24e207..334db5a299a014 100644
 -						    (void *) (long) unsafe_addr,
 -						    sizeof(buf));
 +				strncpy_from_user_nofault(buf,
-+ 					(__force void __user *)unsafe_ptr,
-+ 							 sizeof(buf));
++						    (__force void __user *)unsafe_addr,
++						    sizeof(buf));
  			}
  			continue;
  		}
