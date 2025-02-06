@@ -16,7 +16,7 @@ jobs:
       - name: run build script
         run: |
           chmod +x build.sh
-          ./build.sh
+          bash build.sh
           
       - name: upload kernel 
         uses: actions/upload-artifact@v4
