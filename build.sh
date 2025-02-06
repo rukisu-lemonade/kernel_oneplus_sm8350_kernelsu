@@ -46,7 +46,7 @@ git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kern
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/magic/kernel/setup.sh" | bash -s main
 git apply ../0001-backport-path-umount.patch
 cd $BASE_PATH
 
