@@ -60,6 +60,7 @@ git apply ../0001-backport-path-umount.patch
 if [[ $LEGACY == "false" ]]; then
   git apply ../0002-backport-strncpy-from-user-nofault.patch
 fi
+git apply ../0003-no-dirty-flag.patch
 cd $BASE_PATH
 
 #SUSFS
