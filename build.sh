@@ -48,6 +48,7 @@ echo ">clone KernelSU and patch the kernel"
 cd kernel
 curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/magic/kernel/setup.sh" | bash -s magic
 git apply ../0001-backport-path-umount.patch
+git apply ../0002-backport-strncpy-from-user-nofault.patch
 cd $BASE_PATH
 
 #SUSFS
