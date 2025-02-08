@@ -46,7 +46,7 @@ cd $BASE_PATH
 
 #kernel
 echo ">clone kernel source"
-git clone --branch lineage-21 --depth 1 https://github.com/PixelOS-Lemonade/kernel_oneplus_sm8350 kernel
+git clone --depth 1 https://github.com/PixelOS-Lemonade/kernel_oneplus_sm8350 kernel
 
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
