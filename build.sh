@@ -2,6 +2,7 @@
 
 SUSFS=false
 LEGACY=false
+WIREGUARD=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
@@ -10,6 +11,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --legacy)
       LEGACY=true
+      shift # past argument
+      ;;
+    --wireguard)
+      WIREGUARD=true
       shift # past argument
       ;;
   esac
@@ -76,6 +81,18 @@ if [[ $SUSFS == "true" ]]; then
   echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  cd $BASE_PATH
+fi
+
+#WireGuard
+if [[ $WIREGUARD == "true" ]]; then
+  echo ">clone WireGuard and patch the kernel"
+  git clone --branch v1.0.20220627 --depth 1 https://git.zx2c4.com/wireguard-linux-compat wireguard
+  mv wireguard/src kernel/net/wireguard
+  cd kernel
+  sed -i '94i source "net/wireguard/Kconfig"' net/Kconfig
+  sed -i '18i obj-$(CONFIG_WIREGUARD)		+= wireguard/' net/Makefile
+  echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   cd $BASE_PATH
 fi
 
