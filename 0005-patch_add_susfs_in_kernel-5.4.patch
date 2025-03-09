@@ -1,0 +1,102 @@
+diff --git a/kernel_patches/50_add_susfs_in_kernel-5.4.patch b/kernel_patches/50_add_susfs_in_kernel-5.4.patch
+--- a/kernel_patches/50_add_susfs_in_kernel-5.4.patch
++++ b/kernel_patches/50_add_susfs_in_kernel-5.4.patch
+@@ -966,30 +966,6 @@
+  	ovl_path_real(root_dentry, &path);
+  
+  	err = vfs_statfs(&path, buf);
+-diff --git a/fs/proc/bootconfig.c b/fs/proc/bootconfig.c
+-index 2e244ada1f97..792e1cb04b11 100644
+---- a/fs/proc/bootconfig.c
+-+++ b/fs/proc/bootconfig.c
+-@@ -12,8 +12,19 @@
+- 
+- static char *saved_boot_config;
+- 
+-+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+-+extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
+-+#endif
+-+
+- static int boot_config_proc_show(struct seq_file *m, void *v)
+- {
+-+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+-+	if (saved_boot_config) {
+-+		if (!susfs_spoof_cmdline_or_bootconfig(m)) {
+-+			return 0;
+-+		}
+-+	}
+-+#endif
+- 	if (saved_boot_config)
+- 		seq_puts(m, saved_boot_config);
+- 	return 0;
+ diff --git a/fs/proc/fd.c b/fs/proc/fd.c
+ index 6b634c0a9b6e..1bf6ca564248 100644
+ --- a/fs/proc/fd.c
+@@ -1014,10 +990,10 @@
+  
+  	task = get_proc_task(m->private);
+  	if (!task)
+-@@ -54,10 +60,48 @@ static int seq_show(struct seq_file *m, void *v)
++@@ -58,10 +58,47 @@
++ 
+  	if (ret)
+  		return ret;
+- 
+ +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ +	mnt = real_mount(file->f_path.mnt);
+ +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
+@@ -1025,7 +1001,7 @@
+ +		struct path path;
+ +		char *pathname = kmalloc(PAGE_SIZE, GFP_KERNEL);
+ +		char *dpath;
+-+
++ 
+ +		for (; mnt->mnt_id >= DEFAULT_SUS_MNT_ID; mnt = mnt->mnt_parent) { }
+ +
+ +		if (!pathname) {
+@@ -1055,10 +1031,9 @@
+ +		   file_inode(file)->i_ino);
+ +bypass_orig_flow:
+ +#else
+- 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%lu\n",
++ 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",
+  		   (long long)file->f_pos, f_flags,
+- 		   real_mount(file->f_path.mnt)->mnt_id,
+- 		   file_inode(file)->i_ino);
++ 		   real_mount(file->f_path.mnt)->mnt_id);
+ +#endif
+  
+  	show_fd_locks(m, file, files);
+@@ -1074,9 +1049,9 @@
+ +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+ +#include <linux/susfs_def.h>
+ +#endif
+- 
+- #include <asm/elf.h>
+- #include <asm/tlb.h>
++ #include <linux/mm_inline.h>
++ #include <linux/ctype.h>
++
+ @@ -347,6 +350,10 @@ static void show_vma_header_prefix(struct seq_file *m,
+  	seq_putc(m, ' ');
+  }
+@@ -1385,7 +1360,7 @@
+ index ca388cc44686..66f19067cf93 100644
+ --- a/include/linux/mount.h
+ +++ b/include/linux/mount.h
+-@@ -73,7 +73,11 @@ struct vfsmount {
++@@ -73,7 +73,11 @@
+  	ANDROID_KABI_RESERVE(1);
+  	ANDROID_KABI_RESERVE(2);
+  	ANDROID_KABI_RESERVE(3);
+@@ -1394,9 +1369,9 @@
+ +#else
+  	ANDROID_KABI_RESERVE(4);
+ +#endif
++ 	void *data;
+  } __randomize_layout;
+  
+- struct file; /* forward dec */
+ diff --git a/include/linux/sched.h b/include/linux/sched.h
+ index 3b6cd312986b..1e5320dc601c 100644
+ --- a/include/linux/sched.h

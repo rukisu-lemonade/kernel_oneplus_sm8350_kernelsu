@@ -72,8 +72,17 @@ cd $BASE_PATH
 if [[ $SUSFS == "true" ]]; then
   echo ">clone SUSFS and patch the kernel"
   git clone --branch kernel-5.4 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
-  cp susfs/kernel_patches/fs/* kernel/common/fs/
-  cp susfs/kernel_patches/include/linux/* kernel/common/include/linux/
+
+  # Original patch does not fit lemonade kernel. We include additonal patch
+  # to patch the patch file fiest
+  cd susfs
+  patch -p1 < ../0004-patch_enable_susfs_for_ksu.patch
+  patch -p1 < ../0005-patch_add_susfs_in_kernel-5.4.patch # TODO: boot_config.c seems totally missing. Need to rework the patchset
+  cd $BASE_PATH
+
+  # Actually build susfs
+  cp susfs/kernel_patches/fs/* kernel/fs/
+  cp susfs/kernel_patches/include/linux/* kernel/include/linux/
   cd kernel/KernelSU
   patch -p1 < ../../susfs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
   cd ../
