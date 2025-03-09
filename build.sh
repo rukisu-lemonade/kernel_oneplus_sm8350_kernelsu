@@ -3,6 +3,7 @@
 SUSFS=false
 LEGACY=false
 WIREGUARD=false
+SCOPED_HOOK=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
@@ -11,6 +12,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --legacy)
       LEGACY=true
+      shift # past argument
+      ;;
+    --scoped-hook)
+      SCOPED_HOOK=true
       shift # past argument
       ;;
     --wireguard)
@@ -52,6 +57,15 @@ cd $BASE_PATH
 #kernel
 echo ">clone kernel source"
 git clone --depth 1 https://github.com/PixelOS-Lemonade/kernel_oneplus_sm8350 kernel
+
+#Scoped Hook
+echo ">download scoped hook patchset and patch the kernel"
+if [[ $SCOPED_HOOK == "true" ]]; then
+  curl -LO "https://github.com/dev-sm8350/kernel_oneplus_sm8350/commit/583337f3cbfad72ad3a4109953b45a067bccd5be.patch"
+  cd kernel
+  git apply ../583337f3cbfad72ad3a4109953b45a067bccd5be.patch
+  cd $BASE_PATH
+fi
 
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
