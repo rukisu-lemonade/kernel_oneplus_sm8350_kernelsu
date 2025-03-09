@@ -113,12 +113,27 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
  \ No newline at end of file
  diff --git a/kernel/apk_sign.h b/kernel/apk_sign.h
  index bed501c4..e02aa514 100644
-@@ -358,7 +355,7 @@
+@@ -347,18 +344,18 @@
+ index 9a8e774c..ecdd2468 100644
+ --- a/kernel/core_hook.c
+ +++ b/kernel/core_hook.c
+-@@ -33,6 +33,10 @@
+- #include <linux/vmalloc.h>
+- #endif
++@@ -22,6 +22,10 @@
++ #include <linux/fs.h>
++ #include <linux/namei.h>
+  
+ +#ifdef CONFIG_KSU_SUSFS
+ +#include <linux/susfs.h>
+ +#endif // #ifdef CONFIG_KSU_SUSFS
+ +
   #include "allowlist.h"
-  #include "arch.h"
+- #include "arch.h"
   #include "core_hook.h"
 -@@ -45,13 +49,80 @@
-+@@ -33,9 +33,76 @@
++ #include "klog.h" // IWYU pragma: keep
++@@ -33,9 +37,76 @@
   #include "throne_tracker.h"
   #include "kernel_compat.h"
   
@@ -128,53 +143,161 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   
 + static bool ksu_su_compat_enabled = true;
 + extern void ksu_sucompat_init();
-+@@ -43,7 +110,7 @@
++@@ -43,7 +114,7 @@
 + 
   static inline bool is_allow_su()
   {
  -	if (is_manager()) {
-@@ -878,22 +879,23 @@
+@@ -441,7 +442,7 @@
+  		// we are manager, allow!
+  		return true;
+  	}
+-@@ -128,7 +199,7 @@ static void disable_seccomp()
++@@ -120,7 +191,7 @@
+  #endif
+  }
+  
+@@ -450,7 +451,7 @@
   {
-  	struct path path;
-  	int err = kern_path(mnt, 0, &path);
+  	struct cred *cred;
+  
+-@@ -185,7 +256,7 @@ void escape_to_root(void)
++@@ -174,7 +245,7 @@
+  	disable_seccomp();
+  	spin_unlock_irq(&current->sighand->siglock);
+  
+@@ -459,7 +460,7 @@
+  }
+  
+  int ksu_handle_rename(struct dentry *old_dentry, struct dentry *new_dentry)
+-@@ -222,7 +293,7 @@ int ksu_handle_rename(struct dentry *old_dentry, struct dentry *new_dentry)
++@@ -211,7 +282,7 @@
+  	pr_info("renameat: %s -> %s, new path: %s\n", old_dentry->d_iname,
+  		new_dentry->d_iname, buf);
+  
+@@ -468,7 +469,7 @@
+  
+  	return 0;
+  }
+-@@ -247,7 +318,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
++@@ -256,7 +327,7 @@
+  	}
+  
+  	bool from_root = 0 == current_uid().val;
+@@ -477,7 +478,7 @@
+  
+  	if (!from_root && !from_manager) {
+  		// only root or manager can access this interface
+-@@ -271,7 +342,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
++@@ -280,7 +351,7 @@
+  	if (arg2 == CMD_GRANT_ROOT) {
+  		if (is_allow_su()) {
+  			pr_info("allow root for: %d\n", current_uid().val);
+@@ -486,7 +487,7 @@
+  			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
+  				pr_err("grant_root: prctl reply error\n");
+  			}
+-@@ -303,10 +374,13 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
++@@ -309,10 +380,13 @@
+  		switch (arg3) {
+  		case EVENT_POST_FS_DATA: {
+  			static bool post_fs_data_lock = false;
+@@ -501,7 +502,7 @@
+  			}
+  			break;
+  		}
+-@@ -333,7 +407,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
++@@ -340,7 +414,7 @@
+  		if (!from_root) {
+  			return 0;
+  		}
+@@ -510,7 +511,7 @@
+  			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
+  				pr_err("sepolicy: prctl reply error\n");
+  			}
+-@@ -394,6 +468,338 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
++@@ -401,6 +475,338 @@
+  		return 0;
+  	}
+  
+@@ -849,7 +850,7 @@
+  	// all other cmds are for 'root manager'
+  	if (!from_manager) {
+  		return 0;
+-@@ -461,11 +867,15 @@ static bool should_umount(struct path *path)
++@@ -504,11 +910,15 @@
+  		return false;
+  	}
+  
+@@ -864,36 +865,12 @@
+ +#endif
+  }
+  
+- static int ksu_umount_mnt(struct path *path, int flags)
+-@@ -478,7 +888,11 @@ static int ksu_umount_mnt(struct path *path, int flags)
+- #endif
+- }
+- 
+--static void try_umount(const char *mnt, bool check_mnt, int flags)
+-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+-+void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+-+#else
+-+static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
+-+#endif
+- {
+- 	struct path path;
+- 	int err = kern_path(mnt, 0, &path);
 -@@ -496,12 +910,34 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
 - 		return;
 - 	}
 - 
-+ @@ -522,6 +589,12 @@
-+ static void try_umount(const char *mnt, bool check_mnt, int flags)
-+ {
-+ 	struct path path;
- +#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT) && defined(CONFIG_KSU_SUSFS_ENABLE_LOG)
- +	if (susfs_is_log_enabled) {
- +		pr_info("susfs: umounting '%s' for uid: %d\n", mnt, uid);
- +	}
- +#endif
- +
+-+#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT) && defined(CONFIG_KSU_SUSFS_ENABLE_LOG)
+-+	if (susfs_is_log_enabled) {
+-+		pr_info("susfs: umounting '%s' for uid: %d\n", mnt, uid);
+-+	}
+-+#endif
+-+
 - 	err = ksu_umount_mnt(&path, flags);
-+ 	int err = kern_path(mnt, 0, &path);
-  	if (err) {
+- 	if (err) {
 - 		pr_warn("umount %s failed: %d\n", mnt, err);
-- 	}
-+ 		return;
-+@@ -542,6 +615,22 @@
-+ 	ksu_umount_mnt(&path, flags);
++ static void ksu_umount_mnt(struct path *path, int flags)
++@@ -519,7 +929,27 @@
+  	}
   }
-- 
-+
+  
++-static void try_umount(const char *mnt, bool check_mnt, int flags)
  +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
  +void susfs_try_umount_all(uid_t uid) {
  +	susfs_try_umount(uid);
-@@ -902,7 +904,7 @@
- +	ksu_try_umount("/vendor", true, 0, uid);
- +	ksu_try_umount("/product", true, 0, uid);
- +	ksu_try_umount("/odm", true, 0, uid);
--+	// - For '/data/adb/modules' we pass 'false' here because it is a loop device that we can't determine whether 
-++	// - For '/data/adb/modules' we pass 'false' here because it is a loop device that we can't determine whether
- +	//   its dev_name is KSU or not, and it is safe to just umount it if it is really a mountpoint
- +	ksu_try_umount("/data/adb/modules", false, MNT_DETACH, uid);
- +	/* For both Legacy KSU and Magic Mount KSU */
-@@ -952,15 +954,12 @@
+@@ -910,10 +887,15 @@
+ +}
+ +#endif
+ +
+- int ksu_handle_setuid(struct cred *new, const struct cred *old)
+++#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+++void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+++#else
+++static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
+++#endif
+  {
+- 	// this hook is used for umounting overlayfs for some uid, if there isn't any module mounted, just ignore it!
+-@@ -521,6 +957,20 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
++ 	struct path path;
++ 	int err = kern_path(mnt, 0, &path);
++@@ -561,6 +991,20 @@
+  		return 0;
+  	}
+  
+@@ -934,7 +916,7 @@
+  	if (!is_appuid(new_uid) || is_unsupported_uid(new_uid.val)) {
+  		// pr_info("handle setuid ignore non application or isolated uid: %d\n", new_uid.val);
+  		return 0;
+-@@ -530,7 +980,17 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
++@@ -570,7 +1014,17 @@
+  		// pr_info("handle setuid ignore allowed application: %d\n", new_uid.val);
+  		return 0;
+  	}
+@@ -952,50 +934,45 @@
   	if (!ksu_uid_should_umount(new_uid.val)) {
   		return 0;
   	} else {
@@ -183,16 +306,37 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 - 	}
 - 
 -+#ifndef CONFIG_KSU_SUSFS_SUS_MOUNT
-+@@ -582,31 +671,40 @@
++@@ -582,7 +1036,7 @@
   	// check old process's selinux context, if it is not zygote, ignore it!
   	// because some su apps may setuid to untrusted_app but they are in global mount namespace
   	// when we umount for such process, that is a disaster!
  -	bool is_zygote_child = is_zygote(old->security);
-++#ifndef CONFIG_KSU_SUSFS_SUS_MOUNT
  +	bool is_zygote_child = ksu_is_zygote(old->security);
- +#endif
+-+#endif
   	if (!is_zygote_child) {
-@@ -984,15 +983,16 @@
+  		pr_info("handle umount ignore non zygote child: %d\n",
+  			current->pid);
+- 		return 0;
+- 	}
+-+
+- #ifdef CONFIG_KSU_DEBUG
+- 	// umount the target mnt
++@@ -593,20 +1047,24 @@
+  	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
+  		current->pid);
+  #endif
+- 
++-
+ +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+ +	// susfs come first, and lastly umount by ksu, make sure umount in reversed order
+ +	susfs_try_umount_all(new_uid.val);
+ +#else
++ 	// try umount /system/etc/hosts (hosts module)
++-	try_umount("/system/etc/hosts", false, MNT_DETACH);
+++	ksu_try_umount("/system/etc/hosts", false, MNT_DETACH);
++ 
+  	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
+  	// filter the mountpoint whose target is `/data/adb`
  -	try_umount("/system", true, 0);
  -	try_umount("/vendor", true, 0);
  -	try_umount("/product", true, 0);
@@ -209,8 +353,11 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 --	try_umount("/sbin", false, MNT_DETACH);
  +	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
  +	ksu_try_umount("/sbin", false, MNT_DETACH);
- +#endif
-@@ -1153,10 +1153,10 @@
+-+#endif
+  
+  	return 0;
+  }
+@@ -1153,10 +1130,10 @@
   		stop_execve_hook();
   	}
   
