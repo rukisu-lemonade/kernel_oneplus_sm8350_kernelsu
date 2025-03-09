@@ -225,11 +225,11 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	if (!from_manager) {
   		return 0;
 -@@ -461,11 +867,15 @@ static bool should_umount(struct path *path)
-+@@ -504,11 +910,15 @@
++@@ -504,22 +910,52 @@
   		return false;
   	}
   
-@@ -864,36 +865,12 @@
+@@ -864,36 +865,21 @@
  +#endif
   }
   
@@ -244,24 +244,25 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -+#else
 -+static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
 -+#endif
-- {
++ static void ksu_umount_mnt(struct path *path, int flags)
+  {
 - 	struct path path;
 - 	int err = kern_path(mnt, 0, &path);
 -@@ -496,12 +910,34 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
 - 		return;
 - 	}
 - 
--+#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT) && defined(CONFIG_KSU_SUSFS_ENABLE_LOG)
--+	if (susfs_is_log_enabled) {
--+		pr_info("susfs: umounting '%s' for uid: %d\n", mnt, uid);
--+	}
--+#endif
--+
+ +#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT) && defined(CONFIG_KSU_SUSFS_ENABLE_LOG)
+ +	if (susfs_is_log_enabled) {
+ +		pr_info("susfs: umounting '%s' for uid: %d\n", mnt, uid);
+ +	}
+ +#endif
+ +
 - 	err = ksu_umount_mnt(&path, flags);
-- 	if (err) {
++ 	int err = path_umount(path, flags);
+  	if (err) {
 - 		pr_warn("umount %s failed: %d\n", mnt, err);
-+ static void ksu_umount_mnt(struct path *path, int flags)
-+@@ -519,7 +929,27 @@
++ 		pr_info("umount %s failed: %d\n", path->dentry->d_iname, err);
   	}
   }
   
@@ -269,7 +270,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
  +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
  +void susfs_try_umount_all(uid_t uid) {
  +	susfs_try_umount(uid);
-@@ -910,10 +887,15 @@
+@@ -910,10 +896,15 @@
  +}
  +#endif
  +
@@ -284,35 +285,29 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -@@ -521,6 +957,20 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 + 	struct path path;
 + 	int err = kern_path(mnt, 0, &path);
-+@@ -561,6 +991,20 @@
++@@ -561,6 +997,20 @@
   		return 0;
   	}
   
-@@ -934,7 +916,7 @@
+@@ -934,7 +925,7 @@
   	if (!is_appuid(new_uid) || is_unsupported_uid(new_uid.val)) {
   		// pr_info("handle setuid ignore non application or isolated uid: %d\n", new_uid.val);
   		return 0;
 -@@ -530,7 +980,17 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
-+@@ -570,7 +1014,17 @@
++@@ -570,7 +1020,17 @@
   		// pr_info("handle setuid ignore allowed application: %d\n", new_uid.val);
   		return 0;
   	}
-@@ -952,50 +934,45 @@
+@@ -952,7 +943,7 @@
   	if (!ksu_uid_should_umount(new_uid.val)) {
   		return 0;
   	} else {
 -@@ -539,31 +999,39 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
-- #endif
-- 	}
-- 
--+#ifndef CONFIG_KSU_SUSFS_SUS_MOUNT
-+@@ -582,7 +1036,7 @@
-  	// check old process's selinux context, if it is not zygote, ignore it!
-  	// because some su apps may setuid to untrusted_app but they are in global mount namespace
-  	// when we umount for such process, that is a disaster!
- -	bool is_zygote_child = is_zygote(old->security);
- +	bool is_zygote_child = ksu_is_zygote(old->security);
--+#endif
++@@ -579,10 +1039,12 @@
+  #endif
+  	}
+  
+@@ -966,12 +957,7 @@
   	if (!is_zygote_child) {
   		pr_info("handle umount ignore non zygote child: %d\n",
   			current->pid);
@@ -321,13 +316,12 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -+
 - #ifdef CONFIG_KSU_DEBUG
 - 	// umount the target mnt
-+@@ -593,20 +1047,24 @@
-  	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
+- 	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
++@@ -594,19 +1056,25 @@
   		current->pid);
   #endif
-- 
-+-
- +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+  
+@@ -979,20 +965,25 @@
  +	// susfs come first, and lastly umount by ksu, make sure umount in reversed order
  +	susfs_try_umount_all(new_uid.val);
  +#else
@@ -353,11 +347,8 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 --	try_umount("/sbin", false, MNT_DETACH);
  +	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
  +	ksu_try_umount("/sbin", false, MNT_DETACH);
--+#endif
-  
-  	return 0;
-  }
-@@ -1153,10 +1130,10 @@
+ +#endif
+@@ -1153,10 +1144,10 @@
   		stop_execve_hook();
   	}
   
