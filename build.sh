@@ -59,8 +59,8 @@ echo ">clone kernel source"
 git clone --depth 1 https://github.com/PixelOS-Lemonade/kernel_oneplus_sm8350 kernel
 
 #Scoped Hook
-echo ">download scoped hook patchset and patch the kernel"
 if [[ $SCOPED_HOOK == "true" ]]; then
+  echo ">download scoped hook patchset and patch the kernel"
   curl -LO "https://github.com/dev-sm8350/kernel_oneplus_sm8350/commit/583337f3cbfad72ad3a4109953b45a067bccd5be.patch"
   cd kernel
   git apply ../583337f3cbfad72ad3a4109953b45a067bccd5be.patch
