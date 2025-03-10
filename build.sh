@@ -65,7 +65,7 @@ fi
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s v1.0.3-10-legacy
 git apply ../0001-backport-path-umount.patch
 git apply ../0002-backport-strncpy-from-user-nofault.patch
 git apply ../0003-no-dirty-flag.patch
