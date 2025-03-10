@@ -8,9 +8,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -@@ -29,14 +29,6 @@ $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git subm
 - ccflags-y += -DKSU_VERSION=16
 - endif
-+@@ -15,8 +15,31 @@
-+ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
-  
+- 
 --ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
 --ccflags-y += -DKSU_COMPAT_HAS_CURRENT_SID
 --endif
@@ -25,7 +23,9 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -@@ -56,14 +48,84 @@ $(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
 - ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
 - ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
-- 
++@@ -15,8 +15,31 @@
++ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
+  
 --ifeq ($(shell grep -q "int path_umount" $(srctree)/fs/namespace.c; echo $$?),0)
 + # Do checks before compile
 +-ifneq ($(shell grep -q "int path_umount" $(srctree)/fs/namespace.c; echo $$?),0)
@@ -297,7 +297,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   #endif
   	}
   
-@@ -961,17 +959,12 @@
+@@ -961,20 +959,16 @@
   	// because some su apps may setuid to untrusted_app but they are in global mount namespace
   	// when we umount for such process, that is a disaster!
  -	bool is_zygote_child = is_zygote(old->security);
@@ -312,38 +312,44 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -+
 - #ifdef CONFIG_KSU_DEBUG
 - 	// umount the target mnt
-- 	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
-+@@ -607,20 +1068,24 @@
++@@ -606,20 +1067,24 @@
+  	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
   		current->pid);
   #endif
-  
-@@ -984,19 +977,23 @@
+- 
++-
+ +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+ +	// susfs come first, and lastly umount by ksu, make sure umount in reversed order
+ +	susfs_try_umount_all(new_uid.val);
+@@ -984,15 +978,23 @@
  -	try_umount("/system", true, 0);
  -	try_umount("/vendor", true, 0);
  -	try_umount("/product", true, 0);
---	try_umount("/data/adb/modules", false, MNT_DETACH);
 +-	try_umount("/system_ext", true, 0);
++-	
++-	// try umount modules path
+ -	try_umount("/data/adb/modules", false, MNT_DETACH);
++-
++-	// try umount ksu temp path
++-	try_umount("/debug_ramdisk", false, MNT_DETACH);
++-	try_umount("/sbin", false, MNT_DETACH);
  +	ksu_try_umount("/system", true, 0);
  +	ksu_try_umount("/vendor", true, 0);
  +	ksu_try_umount("/product", true, 0);
 ++	ksu_try_umount("/system_ext", true, 0);
-+ 	
-+ 	// try umount modules path
-+-	try_umount("/data/adb/modules", false, MNT_DETACH);
+++ 	
+++ 	// try umount modules path
  +	ksu_try_umount("/data/adb/modules", false, MNT_DETACH);
-  
-  	// try umount ksu temp path
- -	try_umount("/debug_ramdisk", false, MNT_DETACH);
- -	try_umount("/sbin", false, MNT_DETACH);
-+-
+- 
+- 	// try umount ksu temp path
+--	try_umount("/debug_ramdisk", false, MNT_DETACH);
+--	try_umount("/sbin", false, MNT_DETACH);
+++ 
+++ 	// try umount ksu temp path
  +	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
  +	ksu_try_umount("/sbin", false, MNT_DETACH);
  +#endif
-- 
-  	return 0;
-  }
- diff --git a/kernel/kernel_compat.c b/kernel/kernel_compat.c
-@@ -1091,7 +1088,7 @@
+@@ -1091,7 +1093,7 @@
  index 68e47352..cae07380 100644
  --- a/kernel/ksud.c
  +++ b/kernel/ksud.c
@@ -352,7 +358,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   bool ksu_input_hook __read_mostly = true;
   #endif
   
-@@ -1117,7 +1114,7 @@
+@@ -1117,7 +1119,7 @@
   	ksu_load_allow_list();
   	// sanity check, this may influence the performance
   	stop_input_hook();
@@ -361,7 +367,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   					first_arg);
   				if (!strcmp(first_arg, "second_stage")) {
   					pr_info("/system/bin/init second_stage executed\n");
-@@ -1126,7 +1123,7 @@
+@@ -1126,7 +1128,7 @@
   					init_second_stage_executed = true;
   					ksu_android_ns_fs_check();
   				}
@@ -370,7 +376,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   				pr_info("/init first arg: %s\n", first_arg);
   				if (!strcmp(first_arg, "--second-stage")) {
   					pr_info("/init second_stage executed\n");
-@@ -1135,7 +1132,7 @@
+@@ -1135,7 +1137,7 @@
   					init_second_stage_executed = true;
   					ksu_android_ns_fs_check();
   				}
@@ -379,7 +385,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   					    (!strcmp(env_value, "1") ||
   					     !strcmp(env_value, "true"))) {
   						pr_info("/init second_stage executed\n");
-@@ -1144,7 +1141,7 @@
+@@ -1144,7 +1146,7 @@
   						init_second_stage_executed =
   							true;
   						ksu_android_ns_fs_check();
@@ -388,7 +394,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   		first_app_process = false;
   		pr_info("exec app_process, /data prepared, second_stage: %d\n",
   			init_second_stage_executed);
-@@ -1153,7 +1150,7 @@
+@@ -1153,7 +1155,7 @@
   		stop_execve_hook();
   	}
   
@@ -397,7 +403,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	ksu_execveat_hook = false;
   	pr_info("stop execve_hook\n");
   #endif
-@@ -1429,16 +1426,16 @@
+@@ -1429,16 +1431,16 @@
  index 9b45cd0d..29a4838e 100644
  --- a/kernel/sucompat.c
  +++ b/kernel/sucompat.c
@@ -418,7 +424,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	pr_info("do_execveat_common su found\n");
   	memcpy((void *)filename->name, sh, sizeof(sh));
   
-@@ -1447,7 +1444,7 @@
+@@ -1447,7 +1449,7 @@
   
   	return 0;
   }
@@ -427,7 +433,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	pr_info("sys_execve su found\n");
   	*filename_user = ksud_user_path();
   
-@@ -1456,12 +1453,10 @@
+@@ -1456,12 +1458,10 @@
   
   	return 0;
   }
@@ -443,7 +449,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
  +#ifdef CONFIG_KSU_SUSFS_SUS_SU
  +extern bool ksu_devpts_hook;
  +
-@@ -1482,20 +1477,23 @@
+@@ -1482,20 +1482,23 @@
  +}
  +#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
  +
