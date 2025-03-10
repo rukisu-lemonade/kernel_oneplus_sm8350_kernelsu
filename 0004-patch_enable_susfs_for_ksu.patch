@@ -8,7 +8,9 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -@@ -29,14 +29,6 @@ $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git subm
 - ccflags-y += -DKSU_VERSION=16
 - endif
-- 
++@@ -15,8 +15,31 @@
++ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
+  
 --ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
 --ccflags-y += -DKSU_COMPAT_HAS_CURRENT_SID
 --endif
@@ -23,9 +25,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
 -@@ -56,14 +48,84 @@ $(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
 - ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
 - ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
-+@@ -15,8 +15,31 @@
-+ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
-  
+- 
 --ifeq ($(shell grep -q "int path_umount" $(srctree)/fs/namespace.c; echo $$?),0)
 + # Do checks before compile
 +-ifneq ($(shell grep -q "int path_umount" $(srctree)/fs/namespace.c; echo $$?),0)
@@ -403,24 +403,12 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	ksu_execveat_hook = false;
   	pr_info("stop execve_hook\n");
   #endif
-@@ -1429,16 +1431,16 @@
- index 9b45cd0d..29a4838e 100644
- --- a/kernel/sucompat.c
- +++ b/kernel/sucompat.c
--@@ -24,7 +24,7 @@
-+@@ -27,7 +27,7 @@
-  #define SU_PATH "/system/bin/su"
-  #define SH_PATH "/system/bin/sh"
+@@ -1438,7 +1440,7 @@
   
- -extern void escape_to_root();
- +extern void ksu_escape_to_root();
-  
-- static void __user *userspace_stack_buffer(const void *d, size_t len)
-- {
+  static void __user *userspace_stack_buffer(const void *d, size_t len)
+  {
 -@@ -136,7 +136,7 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
-+ bool ksu_sucompat_hook_state __read_mostly = true;
-+ 
-+@@ -146,7 +146,7 @@
++@@ -136,7 +136,7 @@
   	pr_info("do_execveat_common su found\n");
   	memcpy((void *)filename->name, sh, sizeof(sh));
   
@@ -429,7 +417,7 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   	return 0;
   }
 -@@ -163,7 +163,7 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
-+@@ -211,7 +211,7 @@
++@@ -163,7 +163,7 @@
   	pr_info("sys_execve su found\n");
   	*filename_user = ksud_user_path();
   
@@ -439,9 +427,8 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
   }
 -@@ -365,3 +365,25 @@ void ksu_sucompat_exit()
 - 	unregister_kprobe(&pts_unix98_lookup_kp);
-- #endif
-+@@ -287,6 +287,26 @@
-+ 	*kp_ptr = NULL;
++@@ -378,6 +378,26 @@
+  #endif
   }
 -+
 -+
@@ -453,9 +440,9 @@ diff --git a/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch b/kernel_patc
  +}
  +#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
  +
-+ static struct kprobe *su_kps[6];
-+ 
-+ // sucompat: permited process can execute 'su' to gain root access.
++ void ksu_sucompat_exit()
++ {
++ #ifdef KSU_HOOK_WITH_KPROBES
  diff --git a/kernel/throne_tracker.c b/kernel/throne_tracker.c
  index 725c9103..e7ae295e 100644
  --- a/kernel/throne_tracker.c
