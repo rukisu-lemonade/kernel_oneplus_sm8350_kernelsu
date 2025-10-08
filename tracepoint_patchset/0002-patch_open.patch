@@ -1,0 +1,23 @@
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -33,6 +33,10 @@
+ #include <linux/dnotify.h>
+ #include <linux/compat.h>
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++#include <../drivers/kernelsu/ksu_trace.h>
++#endif
++
+ #include "internal.h"
+ 
+ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+@@ -442,6 +446,9 @@
+ 
+ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ {
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++	trace_ksu_trace_faccessat_hook(&dfd, &filename, &mode, NULL);
++#endif
+ 	return do_faccessat(dfd, filename, mode);
+ }
+ 

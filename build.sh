@@ -9,6 +9,10 @@ while [[ $# -gt 0 ]]; do
       SUSFS=true
       shift # past argument
       ;;
+    --with-susfs-integrated)
+      SUSFS_INTEGRATED=true
+      shift # past argument
+      ;;
     --scoped-hook)
       SCOPED_HOOK=true
       shift # past argument
@@ -29,7 +33,7 @@ echo ">${BASE_PATH}"
 # system
 echo ">install tools"
 sudo apt update -y 
-sudo apt install -y elfutils libarchive-tools
+sudo apt install -y elfutils libarchive-tools gcc-multilib g++-multilib
 
 #libufdt
 echo ">clone libufdt"
@@ -51,7 +55,10 @@ cd $BASE_PATH
 
 #kernel
 echo ">clone kernel source"
-git clone --depth 1 https://github.com/PixelOS-Lemonade/kernel_oneplus_sm8350 kernel
+git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
+cd kernel
+git reset --hard c2ed276dd581ccb541204d27387118b8c608ca60
+cd $BASE_PATH
 
 #Scoped Hook
 if [[ $SCOPED_HOOK == "true" ]]; then
@@ -65,10 +72,30 @@ fi
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s v1.0.3-10-legacy
-git apply ../0001-backport-path-umount.patch
-git apply ../0002-backport-strncpy-from-user-nofault.patch
+if [[ $SUSFS_INTEGRATED == "true" ]]; then
+  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+else
+  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+fi
+#git apply ../0001-backport-path-umount.patch
+#git apply ../0002-backport-strncpy-from-user-nofault.patch
 git apply ../0003-no-dirty-flag.patch
+
+echo "CONFIG_KPM=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KALLSYMS_ALL=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+
+# tracepoint patchset
+# TODO: currently broken, so gated this behind feature flag
+if [[ $TRACEPOINT_HOOK == "true" ]]; then
+  git apply ../tracepoint_patchset/0001-patch_exec.patch
+  git apply ../tracepoint_patchset/0002-patch_open.patch
+  git apply ../tracepoint_patchset/0003-patch_read_write.patch
+  git apply ../tracepoint_patchset/0004-patch_stat.patch
+  git apply ../tracepoint_patchset/0005-patch_input.patch
+  echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+fi
+
 cd $BASE_PATH
 
 #SUSFS

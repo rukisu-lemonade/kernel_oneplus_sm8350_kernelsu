@@ -1,9 +1,6 @@
-name: build kernel with my own flavor (Magic KSU + SUSFS + WireGuard)
+name: build kernel with SUSFS (Integrated)
 
 on:
-  schedule:
-    - cron: "0 0 * * 5"
-    
   workflow_dispatch:
 
 jobs:
@@ -16,7 +13,7 @@ jobs:
       - name: run build script
         run: |
           chmod +x build.sh
-          bash build.sh --wireguard --with-susfs-integrated
+          bash build.sh --with-susfs-integrated
           
       - name: upload kernel 
         uses: actions/upload-artifact@v4
