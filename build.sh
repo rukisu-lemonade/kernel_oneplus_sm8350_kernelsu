@@ -77,9 +77,7 @@ if [[ $SUSFS_INTEGRATED == "true" ]]; then
 else
   curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 fi
-#git apply ../0001-backport-path-umount.patch
-#git apply ../0002-backport-strncpy-from-user-nofault.patch
-git apply ../0003-no-dirty-flag.patch
+git apply ../0001-no-dirty-flag.patch
 
 echo "CONFIG_KPM=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
@@ -101,13 +99,12 @@ cd $BASE_PATH
 #SUSFS
 if [[ $SUSFS == "true" ]]; then
   echo ">clone SUSFS and patch the kernel"
-  git clone --branch kernel-5.4 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
+  git clone --branch 1.4.2-kernel-5.4 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
 
   # Original patch does not fit lemonade kernel. We include additonal patches
   # to patch the patch files fiest
   cd susfs
-  patch -p1 < ../0004-patch_enable_susfs_for_ksu.patch
-  patch -p1 < ../0005-patch_add_susfs_in_kernel-5.4.patch
+  patch -p1 < ../0002-patch_enable_susfs_for_ksu.patch
   cd $BASE_PATH
 
   # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
