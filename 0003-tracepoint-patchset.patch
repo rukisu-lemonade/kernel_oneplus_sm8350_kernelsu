@@ -1,0 +1,122 @@
+diff --git a/fs/exec.c b/fs/exec.c
+index d50d65857..f00f0e199 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -73,6 +73,10 @@
+ 
+ #include <trace/events/sched.h>
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++#include <../drivers/kernelsu/ksu_trace.h>
++#endif
++
+ int suid_dumpable = 0;
+ 
+ static LIST_HEAD(formats);
+@@ -1926,6 +1930,9 @@ int do_execve(struct filename *filename,
+ {
+ 	struct user_arg_ptr argv = { .ptr.native = __argv };
+ 	struct user_arg_ptr envp = { .ptr.native = __envp };
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++    trace_ksu_trace_execveat_hook((int *)AT_FDCWD, &filename, &argv, &envp, 0);
++    #endif
+ 	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
+ }
+ 
+@@ -1953,6 +1960,9 @@ static int compat_do_execve(struct filename *filename,
+ 		.is_compat = true,
+ 		.ptr.compat = __envp,
+ 	};
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++    trace_ksu_trace_execveat_hook((int *)AT_FDCWD, &filename, &argv, &envp, 0); // 32-bit su and 32-on-64 support
++	#endif
+ 	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
+ }
+ 
+diff --git a/fs/open.c b/fs/open.c
+index 5c0043d4b..09c0c38cb 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -35,6 +35,10 @@
+ 
+ #include "internal.h"
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++#include <../drivers/kernelsu/ksu_trace.h>
++#endif
++
+ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+ 	struct file *filp)
+ {
+@@ -442,6 +446,9 @@ long do_faccessat(int dfd, const char __user *filename, int mode)
+ 
+ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ {
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++	trace_ksu_trace_faccessat_hook(&dfd, &filename, &mode, NULL);
++	#endif
+ 	return do_faccessat(dfd, filename, mode);
+ }
+ 
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 93d06b4c5..ef59733e5 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -25,6 +25,10 @@
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++#include <../drivers/kernelsu/ksu_trace.h>
++#endif
++
+ const struct file_operations generic_ro_fops = {
+ 	.llseek		= generic_file_llseek,
+ 	.read_iter	= generic_file_read_iter,
+@@ -594,6 +598,9 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
+ 
+ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+ {
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++    trace_ksu_trace_sys_read_hook(fd, &buf, &count);
++	#endif
+ 	return ksys_read(fd, buf, count);
+ }
+ 
+diff --git a/fs/stat.c b/fs/stat.c
+index 298eb7766..0e91c4390 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -21,6 +21,10 @@
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+ 
++#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++#include <../drivers/kernelsu/ksu_trace.h>
++#endif
++
+ /**
+  * generic_fillattr - Fill in the basic attributes from the inode struct
+  * @inode: Inode to use as the source
+@@ -364,6 +368,10 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
+ 	struct kstat stat;
+ 	int error;
+ 
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++	trace_ksu_trace_stat_hook(&dfd, &filename, &flag);
++	#endif
++
+ 	error = vfs_fstatat(dfd, filename, &stat, flag);
+ 	if (error)
+ 		return error;
+@@ -515,6 +523,10 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
+ 	struct kstat stat;
+ 	int error;
+ 
++	#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
++	trace_ksu_trace_stat_hook(&dfd, &filename, &flag); /* 32-bit su support */
++	#endif
++
+ 	error = vfs_fstatat(dfd, filename, &stat, flag);
+ 	if (error)
+ 		return error;

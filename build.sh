@@ -84,6 +84,7 @@ git apply ../0001-no-dirty-flag.patch
 
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
+  git apply ../0003-tracepoint-patchset.patch
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 fi
 
