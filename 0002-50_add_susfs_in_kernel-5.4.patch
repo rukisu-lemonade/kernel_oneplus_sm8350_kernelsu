@@ -78,7 +78,7 @@ index 4f25015aa534..1373c4d78e4e 100644
  		return NULL;
  	return dentry->d_fsdata;
 diff --git a/fs/exec.c b/fs/exec.c
-index d50d65857823..d1f3ffcdedf1 100644
+index d50d65857823..f1cdd5216f69 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@ -63,6 +63,9 @@
@@ -91,7 +91,23 @@ index d50d65857823..d1f3ffcdedf1 100644
  
  #include <linux/uaccess.h>
  #include <asm/mmu_context.h>
-@@ -1758,6 +1761,20 @@ static int __do_execve_file(int fd, struct filename *filename,
+@@ -1742,6 +1745,15 @@ static int exec_binprm(struct linux_binprm *bprm)
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_KSU_SUSFS
++extern bool ksu_execveat_hook __read_mostly;
++extern bool __ksu_is_allow_uid_for_current(uid_t uid);
++extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
++			void *envp, int *flags);
++extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv,
++				void *envp, int *flags);
++#endif
++
+ /*
+  * sys_execve() executes a new program.
+  */
+@@ -1758,6 +1770,20 @@ static int __do_execve_file(int fd, struct filename *filename,
  	if (IS_ERR(filename))
  		return PTR_ERR(filename);
  
@@ -112,22 +128,6 @@ index d50d65857823..d1f3ffcdedf1 100644
  	/*
  	 * We move the actual failure in case of RLIMIT_NPROC excess from
  	 * set*uid() to execve() because too many poorly written programs
-@@ -1904,6 +1921,15 @@ static int __do_execve_file(int fd, struct filename *filename,
- 	return retval;
- }
- 
-+#ifdef CONFIG_KSU_SUSFS
-+extern bool ksu_execveat_hook __read_mostly;
-+extern bool __ksu_is_allow_uid_for_current(uid_t uid);
-+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
-+			void *envp, int *flags);
-+extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv,
-+				void *envp, int *flags);
-+#endif
-+
- static int do_execveat_common(int fd, struct filename *filename,
- 			      struct user_arg_ptr argv,
- 			      struct user_arg_ptr envp,
 diff --git a/fs/namei.c b/fs/namei.c
 index 60b0dc43e745..8220e5e86ecb 100644
 --- a/fs/namei.c
@@ -1226,7 +1226,7 @@ index 81882a13212d..5fd5d5453e05 100644
  	show_fd_locks(m, file, files);
  	if (seq_has_overflowed(m))
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index d17cce42fe30..c85844b4f7bb 100644
+index d17cce42fe30..b72d1480cc0c 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -20,6 +20,9 @@
@@ -1286,12 +1286,17 @@ index d17cce42fe30..c85844b4f7bb 100644
  		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
  	}
  
-@@ -934,13 +968,50 @@ static void show_smap_vma(struct seq_file *m, void *v)
- static int show_smap(struct seq_file *m, void *v)
+@@ -900,47 +934,53 @@ static void __show_smap(struct seq_file *m, const struct mem_size_stats *mss,
+ 	seq_puts(m, " kB\n");
+ }
+ 
+-static void show_smap_vma(struct seq_file *m, void *v)
++static int show_smap(struct seq_file *m, void *v)
  {
  	struct vm_area_struct *vma = v;
-+	struct mem_size_stats mss;
-+	memset(&mss, 0, sizeof(mss));
+ 	struct mem_size_stats mss;
+-
+ 	memset(&mss, 0, sizeof(mss));
 +	if (!vma_pages(vma))
 +		goto show_pad;
 +
@@ -1315,35 +1320,47 @@ index d17cce42fe30..c85844b4f7bb 100644
 +	}
 +#endif
  
+ 	smap_gather_stats(vma, &mss);
+-
+ 	show_map_vma(m, vma);
+ 	if (vma_get_anon_name(vma)) {
+ 		seq_puts(m, "Name:           ");
+ 		seq_print_vma_name(m, vma);
+ 		seq_putc(m, '\n');
+ 	}
+-
+ 	SEQ_PUT_DEC("Size:           ", VMA_PAD_START(vma) - vma->vm_start);
+ 	SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
+ 	SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
+ 	seq_puts(m, " kB\n");
+-
+ 	__show_smap(m, &mss, false);
+-
+-	seq_printf(m, "THPeligible:		%d\n",
++	seq_printf(m, "THPeligible:    %d\n",
+ 		   transparent_hugepage_enabled(vma));
+-
+ 	if (arch_pkeys_enabled())
+ 		seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
+ 	show_smap_vma_flags(m, vma);
+-}
+-
+-static int show_smap(struct seq_file *m, void *v)
+-{
+-	struct vm_area_struct *vma = v;
+-
 -	if (vma_pages(vma))
 -		show_smap_vma(m, vma);
 -
 -	show_map_pad_vma(vma, m, show_smap_vma, true);
 -
 -	m_cache_vma(m, v);
-+	smap_gather_stats(vma, &mss);
-+	show_map_vma(m, vma);
-+	if (vma_get_anon_name(vma)) {
-+		seq_puts(m, "Name:           ");
-+		seq_print_vma_name(m, vma);
-+		seq_putc(m, '\n');
-+	}
-+	SEQ_PUT_DEC("Size:           ", VMA_PAD_START(vma) - vma->vm_start);
-+	SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
-+	SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
-+	seq_puts(m, " kB\n");
-+	__show_smap(m, &mss, false);
-+	seq_printf(m, "THPeligible:    %d\n",
-+		   transparent_hugepage_enabled(vma));
-+	if (arch_pkeys_enabled())
-+		seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
-+	show_smap_vma_flags(m, vma);
 +show_pad:
 +	show_map_pad_vma(vma, m, show_smap, true);
  	return 0;
  }
  
-@@ -972,7 +1043,19 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
+@@ -972,7 +1012,19 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
  	hold_task_mempolicy(priv);
  
  	for (vma = priv->mm->mmap; vma; vma = vma->vm_next) {
@@ -1363,7 +1380,7 @@ index d17cce42fe30..c85844b4f7bb 100644
  		last_vma_end = vma->vm_end;
  	}
  
-@@ -1635,6 +1718,9 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+@@ -1635,6 +1687,9 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
  	unsigned long start_vaddr;
  	unsigned long end_vaddr;
  	int ret = 0, copied = 0;
@@ -1373,7 +1390,7 @@ index d17cce42fe30..c85844b4f7bb 100644
  
  	if (!mm || !mmget_not_zero(mm))
  		goto out;
-@@ -1691,6 +1777,15 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+@@ -1691,6 +1746,15 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
  			goto out_free;
  		ret = walk_page_range(mm, start_vaddr, end, &pagemap_ops, &pm);
  		up_read(&mm->mmap_sem);
