@@ -1,9 +1,6 @@
 name: build kernel with WireGuard
 
 on:
-  schedule:
-    - cron: "0 0 * * 5"
-    
   workflow_dispatch:
 
 jobs:
