@@ -1220,20 +1220,21 @@ index 81882a13212d..5fd5d5453e05 100644
  	show_fd_locks(m, file, files);
  	if (seq_has_overflowed(m))
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index d17cce42fe30..628219a75ec4 100644
+index d17cce42fe30..365020cc6dfb 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
-@@ -20,6 +20,9 @@
- #include <linux/shmem_fs.h>
- #include <linux/uaccess.h>
- #include <linux/pkeys.h>
+@@ -28,6 +28,10 @@
+ #include <asm/tlbflush.h>
+ #include "internal.h"
+ 
 +#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP)
 +#include <linux/susfs_def.h>
 +#endif
- #include <linux/mm_inline.h>
- #include <linux/ctype.h>
- 
-@@ -349,6 +352,10 @@ static void show_vma_header_prefix(struct seq_file *m,
++
+ #define SEQ_PUT_DEC(str, val) \
+ 		seq_put_decimal_ull_width(m, str, (val) << (PAGE_SHIFT-10), 8)
+ void task_mem(struct seq_file *m, struct mm_struct *mm)
+@@ -349,6 +353,10 @@ static void show_vma_header_prefix(struct seq_file *m,
  	seq_putc(m, ' ');
  }
  
@@ -1244,7 +1245,7 @@ index d17cce42fe30..628219a75ec4 100644
  static void
  show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
  {
-@@ -363,8 +370,35 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
+@@ -363,8 +371,35 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
  
  	if (file) {
  		struct inode *inode = file_inode(vma->vm_file);
@@ -1280,47 +1281,79 @@ index d17cce42fe30..628219a75ec4 100644
  		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
  	}
  
-@@ -759,6 +793,15 @@ static void show_smap_vma_flags(struct seq_file *m, struct vm_area_struct *vma)
- 	};
- 	size_t i;
- 
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-+	if (vma->vm_file &&
-+               unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
-+               susfs_is_current_proc_umounted()) {
-+				seq_puts(m, "VmFlags: mr mw me");
-+               		seq_putc(m, '\n');
-+				return;
-+			   }
-+#endif
- 	seq_puts(m, "VmFlags: ");
- 	for (i = 0; i < BITS_PER_LONG; i++) {
- 		if (!mnemonics[i][0])
-@@ -907,6 +950,24 @@ static void show_smap_vma(struct seq_file *m, void *v)
+@@ -907,6 +942,26 @@ static void show_smap_vma(struct seq_file *m, void *v)
  
  	memset(&mss, 0, sizeof(mss));
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-+       if (vma->vm_file &&
-+               unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
-+               susfs_is_current_proc_umounted())
-+       {
-+               show_map_vma(m, vma);
-+               SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
-+               SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
-+               SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
-+               seq_puts(m, " kB\n");
-+               __show_smap(m, &mss, false);
-+               seq_printf(m, "THPeligible:    %d\n", 0);
-+               if (arch_pkeys_enabled())
-+                               seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
-+			   show_smap_vma_flags(m, vma);
-+			   return;
-+       }
++	if (vma->vm_file &&
++		unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
++		susfs_is_current_proc_umounted())
++	{
++		show_map_vma(m, vma);
++		SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
++		SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
++		SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
++		seq_puts(m, " kB\n");
++		__show_smap(m, &mss, false);
++		seq_printf(m, "THPeligible:    %d\n", 0);
++		if (arch_pkeys_enabled())
++				seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
++		seq_puts(m, "VmFlags: mr mw me");
++		seq_putc(m, '\n');
++		return;
++	}
 +#endif
++
  	smap_gather_stats(vma, &mss);
  
  	show_map_vma(m, vma);
+@@ -972,7 +1027,19 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
+ 	hold_task_mempolicy(priv);
+ 
+ 	for (vma = priv->mm->mmap; vma; vma = vma->vm_next) {
++#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++		if (vma->vm_file &&
++			unlikely(file_inode(vma->vm_file)->i_mapping->flags & BIT_SUS_MAPS) &&
++			susfs_is_current_proc_umounted())
++		{
++			memset(&mss, 0, sizeof(mss));
++			goto bypass_orig_flow;
++		}
++#endif
+ 		smap_gather_stats(vma, &mss);
++#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++bypass_orig_flow:
++#endif
+ 		last_vma_end = vma->vm_end;
+ 	}
+ 
+@@ -1635,6 +1702,9 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+ 	unsigned long start_vaddr;
+ 	unsigned long end_vaddr;
+ 	int ret = 0, copied = 0;
++#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++	struct vm_area_struct *vma;
++#endif
+ 
+ 	if (!mm || !mmget_not_zero(mm))
+ 		goto out;
+@@ -1691,6 +1761,15 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+ 			goto out_free;
+ 		ret = walk_page_range(mm, start_vaddr, end, &pagemap_ops, &pm);
+ 		up_read(&mm->mmap_sem);
++#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++		vma = find_vma(mm, start_vaddr);
++		if (vma && vma->vm_file) {
++			struct inode *inode = file_inode(vma->vm_file);
++			if (unlikely(inode->i_mapping->flags & BIT_SUS_MAPS) && susfs_is_current_proc_umounted()) {
++				pm.buffer->pme = 0;
++			}
++		}
++#endif
+ 		start_vaddr = end;
+ 
+ 		len = min(count, PM_ENTRY_BYTES * pm.pos);
 diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
 index 5b8d065fa83c..4fcdc871c9ba 100644
 --- a/fs/proc_namespace.c
