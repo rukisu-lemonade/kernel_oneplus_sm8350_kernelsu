@@ -4,6 +4,9 @@ SUSFS=false
 WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
+
+SUKISU_SUSFS_VARIANT_COMMIT=05758a975bee86bb523ab19bb4046293cd7db111
+SUSFS_COMMIT=a5e7449c5f31d4f01377a4ce4e324bec57053e6e
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
@@ -72,7 +75,7 @@ fi
 echo ">clone KernelSU and patch the kernel"
 cd kernel
 if [[ $SUSFS == "true" ]]; then
-  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s 05758a975bee86bb523ab19bb4046293cd7db111
+  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
 else
   curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 fi
@@ -98,7 +101,7 @@ if [[ $SUSFS == "true" ]]; then
   git clone --branch gki-android12-5.10 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
 
   cd susfs
-  git reset --hard a5e7449c5f31d4f01377a4ce4e324bec57053e6e
+  git reset --hard $SUSFS_COMMIT
   cd $BASE_PATH
 
   # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
