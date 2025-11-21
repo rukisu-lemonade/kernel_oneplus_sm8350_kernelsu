@@ -81,10 +81,6 @@ else
 fi
 git apply ../0001-no-dirty-flag.patch
 
-echo "CONFIG_KPM=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KALLSYMS_ALL=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
