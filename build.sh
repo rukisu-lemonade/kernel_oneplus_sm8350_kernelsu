@@ -138,7 +138,12 @@ MAKE_ARGS="CC=clang O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 CFLAGS=-Wno-enum-compare"
 make $MAKE_ARGS "vendor/lahaina-qgki_defconfig"
 make $MAKE_ARGS -j"$(nproc --all)"
 cd $BASE_PATH
-cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+if [ -f kernel/out/arch/arm64/boot/Image ]; then
+  cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+else
+  echo "Failed to build kernel. See logs for details"
+  exit 1
+fi
 
 #create dtb
 echo ">create dtb and dtbo.img"
