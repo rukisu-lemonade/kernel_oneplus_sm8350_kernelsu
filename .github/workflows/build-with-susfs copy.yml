@@ -1,6 +1,8 @@
 name: build kernel with SUSFS and Tracepoint Hook
 
 on:
+  push:
+    branches: ["main"]
   schedule:
     - cron: "0 0 * * 5"
   workflow_dispatch:
