@@ -72,16 +72,21 @@ fi
 echo ">clone KernelSU and patch the kernel"
 cd kernel
 if [[ $SUSFS == "true" ]]; then
-  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s 05758a975bee86bb523ab19bb4046293cd7db111
 else
   curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 fi
 git apply ../0001-no-dirty-flag.patch
 
+echo "CONFIG_KPM=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KALLSYMS_ALL=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 else
+  echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 fi
 
@@ -92,9 +97,8 @@ if [[ $SUSFS == "true" ]]; then
   echo ">clone SUSFS and patch the kernel"
   git clone --branch gki-android12-5.10 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
 
-  # Pinned to 1.5.12 due to compability issue
   cd susfs
-  git reset --hard ed19454a4b5905e6718c9a22fad769b906837931
+  git reset --hard a5e7449c5f31d4f01377a4ce4e324bec57053e6e
   cd $BASE_PATH
 
   # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
@@ -102,7 +106,6 @@ if [[ $SUSFS == "true" ]]; then
   cp susfs/kernel_patches/include/linux/* kernel/include/linux/
   cd kernel
 
-  # Based on 76affd70abf61d77feb0a132f61365d6848505df
   git apply ../0002-50_add_susfs_in_kernel-5.4.patch
 
   echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
