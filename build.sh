@@ -91,6 +91,10 @@ cd $BASE_PATH
 if [[ $SUSFS == "true" ]]; then
   echo ">clone SUSFS and patch the kernel"
   git clone --branch gki-android12-5.10 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
+
+  # Pinned to 1.5.12 due to compability issue
+  cd susfs
+  git reset --hard ed19454a4b5905e6718c9a22fad769b906837931
   cd $BASE_PATH
 
   # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
@@ -100,11 +104,6 @@ if [[ $SUSFS == "true" ]]; then
 
   # Based on 76affd70abf61d77feb0a132f61365d6848505df
   git apply ../0002-50_add_susfs_in_kernel-5.4.patch
-
-  # Based on 2fdb933accb4de98dd7e9bb0ded64d73a8176b8a
-  #cd KernelSU
-  #git apply ../../0003-10_enable_susfs_for_sukisu.patch
-  #cd ../
 
   echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
