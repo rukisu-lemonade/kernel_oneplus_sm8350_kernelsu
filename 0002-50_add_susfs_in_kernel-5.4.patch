@@ -1226,7 +1226,7 @@ index 81882a13212d..5fd5d5453e05 100644
  	show_fd_locks(m, file, files);
  	if (seq_has_overflowed(m))
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index d17cce42fe30..d500a626c2da 100644
+index d17cce42fe30..c85844b4f7bb 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -20,6 +20,9 @@
@@ -1321,7 +1321,7 @@ index d17cce42fe30..d500a626c2da 100644
 -	show_map_pad_vma(vma, m, show_smap_vma, true);
 -
 -	m_cache_vma(m, v);
-+	smap_gather_stats(vma, &mss, 0);
++	smap_gather_stats(vma, &mss);
 +	show_map_vma(m, vma);
 +	if (vma_get_anon_name(vma)) {
 +		seq_puts(m, "Name:           ");
@@ -1334,7 +1334,7 @@ index d17cce42fe30..d500a626c2da 100644
 +	seq_puts(m, " kB\n");
 +	__show_smap(m, &mss, false);
 +	seq_printf(m, "THPeligible:    %d\n",
-+		   transparent_hugepage_active(vma));
++		   transparent_hugepage_enabled(vma));
 +	if (arch_pkeys_enabled())
 +		seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
 +	show_smap_vma_flags(m, vma);
