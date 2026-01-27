@@ -5,7 +5,7 @@ WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
 
-SUKISU_SUSFS_VARIANT_COMMIT=05758a975bee86bb523ab19bb4046293cd7db111
+SUKISU_SUSFS_VARIANT_COMMIT=14524ff84107fc9031e78eed38defffe109a3ce7
 SUSFS_COMMIT=a5e7449c5f31d4f01377a4ce4e324bec57053e6e
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -83,7 +83,7 @@ cd kernel
 if [[ $SUSFS == "true" ]]; then
   curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
 else
-  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
 fi
 git apply ../0001-no-dirty-flag.patch
 
@@ -101,7 +101,7 @@ cd $BASE_PATH
 if [[ $SUSFS == "true" ]]; then
   echo "[!] Starting from 2.0.0, SUSFS only uses inline hooks. It is independent of KSU hook method."
   echo ">clone SUSFS and patch the kernel"
-  git clone --branch gki-android12-5.10 --depth 1 https://gitlab.com/simonpunk/susfs4ksu susfs
+  git clone --branch gki-android12-5.10 https://gitlab.com/simonpunk/susfs4ksu susfs
 
   cd susfs
   git reset --hard $SUSFS_COMMIT
