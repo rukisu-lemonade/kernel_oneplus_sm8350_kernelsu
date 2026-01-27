@@ -1,33 +1,3 @@
-From d89183aa5daee6e86cb501d4532b945f4a37136a Mon Sep 17 00:00:00 2001
-From: Bu Kun <local@example.com>
-Date: Tue, 27 Jan 2026 15:25:40 +0800
-Subject: [PATCH] Rebase SUSFS patch to a4c34e58
-
----
- drivers/input/input.c  |  11 ++
- fs/Makefile            |   2 +
- fs/devpts/inode.c      |  14 +++
- fs/exec.c              |  28 +++++
- fs/namei.c             | 269 ++++++++++++++++++++++++++++++++++++++-
- fs/namespace.c         | 244 +++++++++++++++++++++++++++++++++++
- fs/notify/fdinfo.c     |  55 +++++++-
- fs/open.c              |  22 ++++
- fs/proc/base.c         |  29 +++++
- fs/proc/cmdline.c      |  11 ++
- fs/proc/fd.c           |  49 ++++++++
- fs/proc/task_mmu.c     |  79 ++++++++++++
- fs/proc_namespace.c    |  24 ++++
- fs/read_write.c        |  10 ++
- fs/readdir.c           | 280 +++++++++++++++++++++++++++++++++++++++++
- fs/stat.c              |  50 ++++++++
- fs/statfs.c            |  18 ++-
- include/linux/mount.h  |   4 +
- kernel/kallsyms.c      |  32 +++++
- kernel/reboot.c        |  13 ++
- kernel/sys.c           |  14 +++
- security/selinux/avc.c |  19 ++-
- 22 files changed, 1271 insertions(+), 6 deletions(-)
-
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 45fdb9bdf08d..4c877284ccd9 100644
 --- a/drivers/input/input.c
@@ -1374,10 +1344,10 @@ index d17cce42fe30..365020cc6dfb 100644
  
  		len = min(count, PM_ENTRY_BYTES * pm.pos);
 diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
-index 5b8d065fa83c..4fcdc871c9ba 100644
+index 5b8d065fa83c..ebdfc7e23fb1 100644
 --- a/fs/proc_namespace.c
 +++ b/fs/proc_namespace.c
-@@ -12,12 +12,19 @@
+@@ -12,12 +12,20 @@
  #include <linux/security.h>
  #include <linux/fs_struct.h>
  #include <linux/sched/task.h>
@@ -1391,18 +1361,22 @@ index 5b8d065fa83c..4fcdc871c9ba 100644
  #include "internal.h"
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+extern bool susfs_hide_sus_mnts_for_all_procs;
++extern bool susfs_hide_sus_mnts_for_non_su_procs;
++extern bool susfs_is_current_ksu_domain(void);
 +#endif
 +
  static __poll_t mounts_poll(struct file *file, poll_table *wait)
  {
  	struct seq_file *m = file->private_data;
-@@ -102,6 +109,12 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
+@@ -102,6 +110,15 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
  	struct super_block *sb = mnt_path.dentry->d_sb;
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
++	if (susfs_hide_sus_mnts_for_non_su_procs &&
++		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
++		!susfs_is_current_ksu_domain())
++	{
 +		return 0;
 +	}
 +#endif
@@ -1410,24 +1384,30 @@ index 5b8d065fa83c..4fcdc871c9ba 100644
  	if (sb->s_op->show_devname) {
  		err = sb->s_op->show_devname(m, mnt_path.dentry);
  		if (err)
-@@ -138,6 +151,11 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
+@@ -138,6 +155,14 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
  	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
++	if (susfs_hide_sus_mnts_for_non_su_procs &&
++		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
++		!susfs_is_current_ksu_domain())
++	{
 +		return 0;
 +	}
 +#endif
  	seq_printf(m, "%i %i %u:%u ", r->mnt_id, r->mnt_parent->mnt_id,
  		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
  	if (sb->s_op->show_path) {
-@@ -202,6 +220,12 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
+@@ -202,6 +227,15 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
  	struct super_block *sb = mnt_path.dentry->d_sb;
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
++	if (susfs_hide_sus_mnts_for_non_su_procs &&
++		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
++		!susfs_is_current_ksu_domain())
++	{
 +		return 0;
 +	}
 +#endif
@@ -1919,7 +1899,7 @@ index 07a3b5baa404..93da04116fd2 100644
  	if (error >= 0)
  		error = buf.error;
 diff --git a/fs/stat.c b/fs/stat.c
-index 298eb77668a7..ed995b849a04 100644
+index 298eb77668a7..794b2e92cccc 100644
 --- a/fs/stat.c
 +++ b/fs/stat.c
 @@ -17,10 +17,17 @@
@@ -1958,7 +1938,7 @@ index 298eb77668a7..ed995b849a04 100644
  	stat->dev = inode->i_sb->s_dev;
  	stat->ino = inode->i_ino;
  	stat->mode = inode->i_mode;
-@@ -119,6 +137,16 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
+@@ -119,6 +137,21 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
  }
  EXPORT_SYMBOL_NS(vfs_getattr, ANDROID_GKI_VFS_EXPORT_ONLY);
  
@@ -1972,10 +1952,27 @@ index 298eb77668a7..ed995b849a04 100644
 +#endif
 +#endif
 +
++#ifdef CONFIG_KSU_SUSFS
++extern bool ksu_init_rc_hook __read_mostly;
++extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
++#endif // #ifdef CONFIG_KSU_SUSFS
++
  /**
   * vfs_statx_fd - Get the enhanced basic attributes by file descriptor
   * @fd: The file descriptor referring to the file of interest
-@@ -172,6 +200,18 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
+@@ -144,6 +177,11 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
+ 	if (f.file) {
+ 		error = vfs_getattr(&f.file->f_path, stat,
+ 				    request_mask, query_flags);
++#ifdef CONFIG_KSU_SUSFS
++	if (unlikely(ksu_init_rc_hook)) {
++		ksu_handle_vfs_fstat(fd, &stat->size);
++	}
++#endif // #ifdef CONFIG_KSU_SUSFS
+ 		fdput(f);
+ 	}
+ 	return error;
+@@ -172,6 +210,18 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
  	int error = -EINVAL;
  	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
  
@@ -1994,30 +1991,6 @@ index 298eb77668a7..ed995b849a04 100644
  	if ((flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
  		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
  		return -EINVAL;
-@@ -647,6 +687,11 @@ COMPAT_SYSCALL_DEFINE2(newlstat, const char __user *, filename,
- 	return cp_compat_stat(&stat, statbuf);
- }
- 
-+#ifdef CONFIG_KSU_SUSFS
-+extern bool ksu_init_rc_hook __read_mostly;
-+extern void ksu_handle_sys_newfstatat(int fd, loff_t *kstat_size_ptr);
-+#endif // #ifdef CONFIG_KSU_SUSFS
-+
- #ifndef __ARCH_WANT_STAT64
- COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
- 		       const char __user *, filename,
-@@ -658,6 +703,11 @@ COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
- 	error = vfs_fstatat(dfd, filename, &stat, flag);
- 	if (error)
- 		return error;
-+#ifdef CONFIG_KSU_SUSFS
-+	if (unlikely(ksu_init_rc_hook)) {
-+		ksu_handle_sys_newfstatat(dfd, &stat.size);
-+	}
-+#endif // #ifdef CONFIG_KSU_SUSFS
- 	return cp_compat_stat(&stat, statbuf);
- }
- #endif
 diff --git a/fs/statfs.c b/fs/statfs.c
 index 4960c69cc47c..f2e0f563ba52 100644
 --- a/fs/statfs.c
@@ -2252,6 +2225,3 @@ index 7e1e6bc881b0..ba6a67213e4e 100644
  	audit_log_format(ab, " tclass=%s", secclass_map[sad->tclass-1].name);
  
  	if (sad->denied)
--- 
-2.52.0
-
