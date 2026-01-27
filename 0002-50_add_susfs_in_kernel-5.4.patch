@@ -1,7 +1,7 @@
-From 92f0601caa1c4c1425cf02a8d6a05488529ed88e Mon Sep 17 00:00:00 2001
-Date: Tue, 27 Jan 2026 12:09:52 +0800
-Subject: [PATCH] Rebased SUSFS patch to
- 50e4c35aa2e03e67ad2f045f8fc4ee2098c0b60c
+From d89183aa5daee6e86cb501d4532b945f4a37136a Mon Sep 17 00:00:00 2001
+From: Bu Kun <local@example.com>
+Date: Tue, 27 Jan 2026 15:25:40 +0800
+Subject: [PATCH] Rebase SUSFS patch to a4c34e58
 
 ---
  drivers/input/input.c  |  11 ++
@@ -16,17 +16,17 @@ Subject: [PATCH] Rebased SUSFS patch to
  fs/proc/cmdline.c      |  11 ++
  fs/proc/fd.c           |  49 ++++++++
  fs/proc/task_mmu.c     |  79 ++++++++++++
- fs/proc_namespace.c    |  34 +++++
+ fs/proc_namespace.c    |  24 ++++
  fs/read_write.c        |  10 ++
  fs/readdir.c           | 280 +++++++++++++++++++++++++++++++++++++++++
- fs/stat.c              |  52 ++++++++
+ fs/stat.c              |  50 ++++++++
  fs/statfs.c            |  18 ++-
  include/linux/mount.h  |   4 +
  kernel/kallsyms.c      |  32 +++++
  kernel/reboot.c        |  13 ++
- kernel/sys.c           |  13 ++
+ kernel/sys.c           |  14 +++
  security/selinux/avc.c |  19 ++-
- 22 files changed, 1282 insertions(+), 6 deletions(-)
+ 22 files changed, 1271 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 45fdb9bdf08d..4c877284ccd9 100644
@@ -601,10 +601,10 @@ index 60b0dc43e745..1b374f4272d6 100644
  	return filp;
  }
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 2fd0bf91aa77..96f7185b87cc 100644
+index 2fd0bf91aa77..92a10cd7871a 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -30,10 +30,23 @@
+@@ -30,10 +30,22 @@
  #include <uapi/linux/mount.h>
  #include <linux/fs_context.h>
  #include <linux/shmem_fs.h>
@@ -618,7 +618,6 @@ index 2fd0bf91aa77..96f7185b87cc 100644
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +extern bool susfs_is_current_ksu_domain(void);
 +extern bool susfs_is_boot_completed_triggered __read_mostly;
-+
 +static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 +static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 +
@@ -628,7 +627,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  /* Maximum number of mounts in a mount namespace */
  unsigned int sysctl_mount_max __read_mostly = 100000;
  
-@@ -123,6 +136,20 @@ static int mnt_alloc_id(struct mount *mnt)
+@@ -123,6 +135,20 @@ static int mnt_alloc_id(struct mount *mnt)
  
  static void mnt_free_id(struct mount *mnt)
  {
@@ -649,7 +648,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  	ida_free(&mnt_id_ida, mnt->mnt_id);
  }
  
-@@ -131,7 +158,23 @@ static void mnt_free_id(struct mount *mnt)
+@@ -131,7 +157,23 @@ static void mnt_free_id(struct mount *mnt)
   */
  static int mnt_alloc_group_id(struct mount *mnt)
  {
@@ -673,7 +672,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  
  	if (res < 0)
  		return res;
-@@ -144,6 +187,22 @@ static int mnt_alloc_group_id(struct mount *mnt)
+@@ -144,6 +186,22 @@ static int mnt_alloc_group_id(struct mount *mnt)
   */
  void mnt_release_group_id(struct mount *mnt)
  {
@@ -696,7 +695,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  	ida_free(&mnt_group_ida, mnt->mnt_group_id);
  	mnt->mnt_group_id = 0;
  }
-@@ -181,6 +240,110 @@ int mnt_get_count(struct mount *mnt)
+@@ -181,6 +239,110 @@ int mnt_get_count(struct mount *mnt)
  #endif
  }
  
@@ -807,7 +806,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  static struct mount *alloc_vfsmnt(const char *name)
  {
  	struct mount *mnt = kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
-@@ -208,6 +371,10 @@ static struct mount *alloc_vfsmnt(const char *name)
+@@ -208,6 +370,10 @@ static struct mount *alloc_vfsmnt(const char *name)
  		mnt->mnt_writers = 0;
  #endif
  		mnt->mnt.data = NULL;
@@ -818,7 +817,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  
  		INIT_HLIST_NODE(&mnt->mnt_hash);
  		INIT_LIST_HEAD(&mnt->mnt_child);
-@@ -946,7 +1113,19 @@ struct vfsmount *vfs_create_mount(struct fs_context *fc)
+@@ -946,7 +1112,19 @@ struct vfsmount *vfs_create_mount(struct fs_context *fc)
  		return ERR_PTR(-EINVAL);
  	sb = fc->root->d_sb;
  
@@ -838,7 +837,7 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  	if (!mnt)
  		return ERR_PTR(-ENOMEM);
  
-@@ -1039,7 +1218,37 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
+@@ -1039,7 +1217,37 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
  	struct mount *mnt;
  	int err;
  
@@ -876,6 +875,14 @@ index 2fd0bf91aa77..96f7185b87cc 100644
  	if (!mnt)
  		return ERR_PTR(-ENOMEM);
  
+@@ -2376,6 +2584,7 @@ static int do_loopback(struct path *path, const char *old_name,
+ 		umount_tree(mnt, UMOUNT_SYNC);
+ 		unlock_mount_hash();
+ 	}
++
+ out2:
+ 	unlock_mount(mp);
+ out:
 @@ -3383,6 +3592,9 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
  	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
  	if (user_ns != ns->user_ns)
@@ -1367,10 +1374,10 @@ index d17cce42fe30..365020cc6dfb 100644
  
  		len = min(count, PM_ENTRY_BYTES * pm.pos);
 diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
-index 5b8d065fa83c..ebdfc7e23fb1 100644
+index 5b8d065fa83c..4fcdc871c9ba 100644
 --- a/fs/proc_namespace.c
 +++ b/fs/proc_namespace.c
-@@ -12,12 +12,20 @@
+@@ -12,12 +12,19 @@
  #include <linux/security.h>
  #include <linux/fs_struct.h>
  #include <linux/sched/task.h>
@@ -1384,22 +1391,18 @@ index 5b8d065fa83c..ebdfc7e23fb1 100644
  #include "internal.h"
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+extern bool susfs_hide_sus_mnts_for_non_su_procs;
-+extern bool susfs_is_current_ksu_domain(void);
++extern bool susfs_hide_sus_mnts_for_all_procs;
 +#endif
 +
  static __poll_t mounts_poll(struct file *file, poll_table *wait)
  {
  	struct seq_file *m = file->private_data;
-@@ -102,6 +110,15 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
+@@ -102,6 +109,12 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
  	struct super_block *sb = mnt_path.dentry->d_sb;
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_non_su_procs &&
-+		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
-+		!susfs_is_current_ksu_domain())
-+	{
++	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
 +		return 0;
 +	}
 +#endif
@@ -1407,30 +1410,24 @@ index 5b8d065fa83c..ebdfc7e23fb1 100644
  	if (sb->s_op->show_devname) {
  		err = sb->s_op->show_devname(m, mnt_path.dentry);
  		if (err)
-@@ -138,6 +155,14 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
+@@ -138,6 +151,11 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
  	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_non_su_procs &&
-+		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
-+		!susfs_is_current_ksu_domain())
-+	{
++	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
 +		return 0;
 +	}
 +#endif
  	seq_printf(m, "%i %i %u:%u ", r->mnt_id, r->mnt_parent->mnt_id,
  		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
  	if (sb->s_op->show_path) {
-@@ -202,6 +227,15 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
+@@ -202,6 +220,12 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
  	struct super_block *sb = mnt_path.dentry->d_sb;
  	int err;
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (susfs_hide_sus_mnts_for_non_su_procs &&
-+		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
-+		!susfs_is_current_ksu_domain())
-+	{
++	if (susfs_hide_sus_mnts_for_all_procs && r->mnt_id >= DEFAULT_KSU_MNT_ID) {
 +		return 0;
 +	}
 +#endif
@@ -1439,7 +1436,7 @@ index 5b8d065fa83c..ebdfc7e23fb1 100644
  	if (sb->s_op->show_devname) {
  		seq_puts(m, "device ");
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 93d06b4c5f78..511619f5648d 100644
+index 93d06b4c5f78..7ac0cda3955f 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
 @@ -592,8 +592,18 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
@@ -1454,7 +1451,7 @@ index 93d06b4c5f78..511619f5648d 100644
  SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
 +#ifdef CONFIG_KSU_SUSFS
-+	if (unlikely(ksu_init_rc_hook))
++if (unlikely(ksu_init_rc_hook))
 +		ksu_handle_sys_read(fd);
 +#endif
 +
@@ -1922,7 +1919,7 @@ index 07a3b5baa404..93da04116fd2 100644
  	if (error >= 0)
  		error = buf.error;
 diff --git a/fs/stat.c b/fs/stat.c
-index 298eb77668a7..1928680d79ac 100644
+index 298eb77668a7..ed995b849a04 100644
 --- a/fs/stat.c
 +++ b/fs/stat.c
 @@ -17,10 +17,17 @@
@@ -1978,33 +1975,7 @@ index 298eb77668a7..1928680d79ac 100644
  /**
   * vfs_statx_fd - Get the enhanced basic attributes by file descriptor
   * @fd: The file descriptor referring to the file of interest
-@@ -131,6 +159,12 @@ EXPORT_SYMBOL_NS(vfs_getattr, ANDROID_GKI_VFS_EXPORT_ONLY);
-  *
-  * 0 will be returned on success, and a -ve error code if unsuccessful.
-  */
-+
-+#ifdef CONFIG_KSU_SUSFS
-+extern bool ksu_init_rc_hook __read_mostly;
-+extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
-+#endif // #ifdef CONFIG_KSU_SUSFS
-+
- int vfs_statx_fd(unsigned int fd, struct kstat *stat,
- 		 u32 request_mask, unsigned int query_flags)
- {
-@@ -144,6 +178,12 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
- 	if (f.file) {
- 		error = vfs_getattr(&f.file->f_path, stat,
- 				    request_mask, query_flags);
-+#ifdef CONFIG_KSU_SUSFS
-+		if (unlikely(ksu_init_rc_hook)) {
-+			ksu_handle_vfs_fstat(fd, &stat->size);
-+		}
-+#endif // #ifdef CONFIG_KSU_SUSFS
-+
- 		fdput(f);
- 	}
- 	return error;
-@@ -172,6 +212,18 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
+@@ -172,6 +200,18 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
  	int error = -EINVAL;
  	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
  
@@ -2023,6 +1994,30 @@ index 298eb77668a7..1928680d79ac 100644
  	if ((flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
  		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
  		return -EINVAL;
+@@ -647,6 +687,11 @@ COMPAT_SYSCALL_DEFINE2(newlstat, const char __user *, filename,
+ 	return cp_compat_stat(&stat, statbuf);
+ }
+ 
++#ifdef CONFIG_KSU_SUSFS
++extern bool ksu_init_rc_hook __read_mostly;
++extern void ksu_handle_sys_newfstatat(int fd, loff_t *kstat_size_ptr);
++#endif // #ifdef CONFIG_KSU_SUSFS
++
+ #ifndef __ARCH_WANT_STAT64
+ COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
+ 		       const char __user *, filename,
+@@ -658,6 +703,11 @@ COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
+ 	error = vfs_fstatat(dfd, filename, &stat, flag);
+ 	if (error)
+ 		return error;
++#ifdef CONFIG_KSU_SUSFS
++	if (unlikely(ksu_init_rc_hook)) {
++		ksu_handle_sys_newfstatat(dfd, &stat.size);
++	}
++#endif // #ifdef CONFIG_KSU_SUSFS
+ 	return cp_compat_stat(&stat, statbuf);
+ }
+ #endif
 diff --git a/fs/statfs.c b/fs/statfs.c
 index 4960c69cc47c..f2e0f563ba52 100644
 --- a/fs/statfs.c
@@ -2163,26 +2158,39 @@ index 790c2f514a55..9e7c9de45057 100644
  	if (!ns_capable(pid_ns->user_ns, CAP_SYS_BOOT))
  		return -EPERM;
 diff --git a/kernel/sys.c b/kernel/sys.c
-index fa3f48a51aa9..1936634fae15 100644
+index fa3f48a51aa9..dad29d392da6 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -687,8 +687,15 @@ long __sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
- 	return retval;
+@@ -617,6 +617,9 @@ SYSCALL_DEFINE1(setuid, uid_t, uid)
+ 	return __sys_setuid(uid);
  }
  
 +#ifdef CONFIG_KSU_SUSFS
 +extern int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid);
 +#endif
-+
- SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
- {
+ 
+ /*
+  * This function implements a generic ability to update ruid, euid,
+@@ -630,6 +633,10 @@ long __sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+ 	int retval;
+ 	kuid_t kruid, keuid, ksuid;
+ 
 +#ifdef CONFIG_KSU_SUSFS
 +	(void)ksu_handle_setresuid(ruid, euid, suid);
 +#endif
- 	return __sys_setresuid(ruid, euid, suid);
++
+ 	kruid = make_kuid(ns, ruid);
+ 	keuid = make_kuid(ns, euid);
+ 	ksuid = make_kuid(ns, suid);
+@@ -687,6 +694,7 @@ long __sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+ 	return retval;
  }
  
-@@ -1240,12 +1247,18 @@ static int override_release(char __user *release, size_t len)
++
+ SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
+ {
+ 	return __sys_setresuid(ruid, euid, suid);
+@@ -1240,12 +1248,18 @@ static int override_release(char __user *release, size_t len)
  	return ret;
  }
  
