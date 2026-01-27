@@ -62,6 +62,12 @@ echo ">clone kernel source"
 git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
 cd $BASE_PATH
 
+#Samsung SSG IO Schedular
+echo ">adding samsung ssg io schedular..."
+cd kernel
+git apply ../0004-Add-SSG-IO-Schedular.patch
+cd $BASE_PATH
+
 #Scoped Hook
 if [[ $SCOPED_HOOK == "true" ]]; then
   echo ">download scoped hook patchset and patch the kernel"
