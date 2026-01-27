@@ -66,6 +66,8 @@ cd $BASE_PATH
 echo ">adding samsung ssg io schedular..."
 cd kernel
 git apply ../0004-Add-SSG-IO-Schedular.patch
+echo "CONFIG_MQ_IOSCHED_SSG=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_MQ_IOSCHED_SSG_CGROUP=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 cd $BASE_PATH
 
 #Scoped Hook
