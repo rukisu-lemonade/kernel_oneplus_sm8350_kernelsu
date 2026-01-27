@@ -1,15 +1,16 @@
-From 521e6803011aa92be3ff4decc48fb09ce4954e38 Mon Sep 17 00:00:00 2001
+From 3320a9cccecb346efd5b472e0ca654dddc249527 Mon Sep 17 00:00:00 2001
+From: Bu Kun <local@example.com>
 Date: Tue, 27 Jan 2026 11:16:21 +0800
 Subject: [PATCH] Add SSG IO Schedular
 
 ---
  block/Kconfig.iosched |   14 +
- block/Makefile        |    5 +
+ block/Makefile        |    3 +
  block/elevator.c      |    2 +-
  block/ssg-cgroup.c    |  263 +++++++++++
  block/ssg-cgroup.h    |   65 +++
  block/ssg-iosched.c   | 1052 +++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 1400 insertions(+), 1 deletion(-)
+ 6 files changed, 1398 insertions(+), 1 deletion(-)
  create mode 100644 block/ssg-cgroup.c
  create mode 100644 block/ssg-cgroup.h
  create mode 100644 block/ssg-iosched.c
@@ -40,18 +41,16 @@ index b89310a022ad..6d806b34c45c 100644
         bool "BFQ hierarchical scheduling support"
         depends on IOSCHED_BFQ && BLK_CGROUP
 diff --git a/block/Makefile b/block/Makefile
-index 124cddef5570..a74ca01fff28 100644
+index 124cddef5570..8ee8d75a1451 100644
 --- a/block/Makefile
 +++ b/block/Makefile
-@@ -24,6 +24,11 @@ obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
+@@ -24,6 +24,9 @@ obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
  obj-$(CONFIG_MQ_IOSCHED_KYBER)	+= kyber-iosched.o
  bfq-y				:= bfq-iosched.o bfq-wf2q.o bfq-cgroup.o
  obj-$(CONFIG_IOSCHED_BFQ)	+= bfq.o
 +ssg-$(CONFIG_MQ_IOSCHED_SSG)	:= ssg-iosched.o
 +ssg-$(CONFIG_MQ_IOSCHED_SSG_CGROUP)	+= ssg-cgroup.o
 +obj-$(CONFIG_MQ_IOSCHED_SSG)	+= ssg.o
-+
-+obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
  
  obj-$(CONFIG_BLOCK_COMPAT)	+= compat_ioctl.o
  obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
