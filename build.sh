@@ -5,7 +5,7 @@ WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
 
-SUKISU_SUSFS_VARIANT_COMMIT=14524ff84107fc9031e78eed38defffe109a3ce7
+SUKISU_SUSFS_VARIANT_COMMIT=9ff378163b779ddf6044fb52954b5910ef19bd84
 SUSFS_COMMIT=50e4c35aa2e03e67ad2f045f8fc4ee2098c0b60c
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -83,9 +83,9 @@ fi
 echo ">clone KernelSU and patch the kernel"
 cd kernel
 if [[ $SUSFS == "true" ]]; then
-  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
+  curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
 else
-  curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
+  curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s builtin
 fi
 git apply ../0001-no-dirty-flag.patch
 
