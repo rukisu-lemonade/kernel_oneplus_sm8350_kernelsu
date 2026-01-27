@@ -6,7 +6,7 @@ SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
 
 SUKISU_SUSFS_VARIANT_COMMIT=14524ff84107fc9031e78eed38defffe109a3ce7
-SUSFS_COMMIT=a5e7449c5f31d4f01377a4ce4e324bec57053e6e
+SUSFS_COMMIT=50e4c35aa2e03e67ad2f045f8fc4ee2098c0b60c
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
