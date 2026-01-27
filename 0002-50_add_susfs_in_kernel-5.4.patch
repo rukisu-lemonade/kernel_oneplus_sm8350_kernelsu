@@ -1,4 +1,4 @@
-From d986286c892f879cfc13c44c6c031e576f0140ac Mon Sep 17 00:00:00 2001
+From 92f0601caa1c4c1425cf02a8d6a05488529ed88e Mon Sep 17 00:00:00 2001
 Date: Tue, 27 Jan 2026 12:09:52 +0800
 Subject: [PATCH] Rebased SUSFS patch to
  50e4c35aa2e03e67ad2f045f8fc4ee2098c0b60c
@@ -9,7 +9,7 @@ Subject: [PATCH] Rebased SUSFS patch to
  fs/devpts/inode.c      |  14 +++
  fs/exec.c              |  28 +++++
  fs/namei.c             | 269 ++++++++++++++++++++++++++++++++++++++-
- fs/namespace.c         | 247 +++++++++++++++++++++++++++++++++++-
+ fs/namespace.c         | 244 +++++++++++++++++++++++++++++++++++
  fs/notify/fdinfo.c     |  55 +++++++-
  fs/open.c              |  22 ++++
  fs/proc/base.c         |  29 +++++
@@ -26,7 +26,7 @@ Subject: [PATCH] Rebased SUSFS patch to
  kernel/reboot.c        |  13 ++
  kernel/sys.c           |  13 ++
  security/selinux/avc.c |  19 ++-
- 22 files changed, 1282 insertions(+), 9 deletions(-)
+ 22 files changed, 1282 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 45fdb9bdf08d..4c877284ccd9 100644
@@ -601,7 +601,7 @@ index 60b0dc43e745..1b374f4272d6 100644
  	return filp;
  }
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 2fd0bf91aa77..80584dd6cdef 100644
+index 2fd0bf91aa77..96f7185b87cc 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -30,10 +30,23 @@
@@ -876,17 +876,7 @@ index 2fd0bf91aa77..80584dd6cdef 100644
  	if (!mnt)
  		return ERR_PTR(-ENOMEM);
  
-@@ -2376,9 +2585,6 @@ static int do_loopback(struct path *path, const char *old_name,
- 		umount_tree(mnt, UMOUNT_SYNC);
- 		unlock_mount_hash();
- 	}
--out2:
--	unlock_mount(mp);
--out:
- 	path_put(&old_path);
- 	return err;
- }
-@@ -3383,6 +3589,9 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
+@@ -3383,6 +3592,9 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
  	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
  	if (user_ns != ns->user_ns)
  		copy_flags |= CL_SHARED_TO_SLAVE;
@@ -896,7 +886,7 @@ index 2fd0bf91aa77..80584dd6cdef 100644
  	new = copy_tree(old, old->mnt.mnt_root, copy_flags);
  	if (IS_ERR(new)) {
  		namespace_unlock();
-@@ -4165,3 +4374,35 @@ const struct proc_ns_operations mntns_operations = {
+@@ -4165,3 +4377,35 @@ const struct proc_ns_operations mntns_operations = {
  	.install	= mntns_install,
  	.owner		= mntns_owner,
  };

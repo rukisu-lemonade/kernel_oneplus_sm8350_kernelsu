@@ -1,4 +1,4 @@
-From 3320a9cccecb346efd5b472e0ca654dddc249527 Mon Sep 17 00:00:00 2001
+From c26a1aeb5bb62cfe792eaef50989725760f5056d Mon Sep 17 00:00:00 2001
 From: Bu Kun <local@example.com>
 Date: Tue, 27 Jan 2026 11:16:21 +0800
 Subject: [PATCH] Add SSG IO Schedular
@@ -6,11 +6,11 @@ Subject: [PATCH] Add SSG IO Schedular
 ---
  block/Kconfig.iosched |   14 +
  block/Makefile        |    3 +
- block/elevator.c      |    2 +-
- block/ssg-cgroup.c    |  263 +++++++++++
+ block/blk-mq.h        |   11 +
+ block/ssg-cgroup.c    |  263 ++++++++++
  block/ssg-cgroup.h    |   65 +++
- block/ssg-iosched.c   | 1052 +++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 1398 insertions(+), 1 deletion(-)
+ block/ssg-iosched.c   | 1053 +++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 1409 insertions(+)
  create mode 100644 block/ssg-cgroup.c
  create mode 100644 block/ssg-cgroup.h
  create mode 100644 block/ssg-iosched.c
@@ -54,22 +54,29 @@ index 124cddef5570..8ee8d75a1451 100644
  
  obj-$(CONFIG_BLOCK_COMPAT)	+= compat_ioctl.o
  obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
-diff --git a/block/elevator.c b/block/elevator.c
-index 3ba826230c57..7c2c3e627355 100644
---- a/block/elevator.c
-+++ b/block/elevator.c
-@@ -632,7 +632,7 @@ static struct elevator_type *elevator_get_default(struct request_queue *q)
- 	if (q->nr_hw_queues != 1)
- 		return NULL;
- 
--	return elevator_get(q, "mq-deadline", false);
-+	return elevator_get(q, "ssg", false);
+diff --git a/block/blk-mq.h b/block/blk-mq.h
+index 5bb742409a47..a3a75c6b1aad 100644
+--- a/block/blk-mq.h
++++ b/block/blk-mq.h
+@@ -280,4 +280,15 @@ static inline struct blk_plug *blk_mq_plug(struct request_queue *q,
+ 	return NULL;
  }
  
- /*
++/* Free all requests on the list */
++static inline void blk_mq_free_requests(struct list_head *list)
++{
++	while (!list_empty(list)) {
++		struct request *rq = list_entry_rq(list->next);
++
++		list_del_init(&rq->queuelist);
++		blk_mq_free_request(rq);
++	}
++}
++
+ #endif
 diff --git a/block/ssg-cgroup.c b/block/ssg-cgroup.c
 new file mode 100644
-index 000000000000..1b36c95d2e74
+index 000000000000..df42f532f196
 --- /dev/null
 +++ b/block/ssg-cgroup.c
 @@ -0,0 +1,263 @@
@@ -141,8 +148,8 @@ index 000000000000..1b36c95d2e74
 +static void ssg_blkcg_set_shallow_depth(struct ssg_blkcg *ssg_blkcg,
 +		struct ssg_blkg *ssg_blkg, struct blk_mq_tags *tags)
 +{
-+	unsigned int depth = tags->bitmap_tags->sb.depth;
-+	unsigned int map_nr = tags->bitmap_tags->sb.map_nr;
++	unsigned int depth = tags->bitmap_tags.sb.depth;
++	unsigned int map_nr = tags->bitmap_tags.sb.map_nr;
 +
 +	ssg_blkg->max_available_rqs =
 +		depth * ssg_blkcg->max_available_ratio / 100U;
@@ -409,10 +416,10 @@ index 000000000000..c8fde426e31e
 +#endif
 diff --git a/block/ssg-iosched.c b/block/ssg-iosched.c
 new file mode 100644
-index 000000000000..a103ec6bfbdd
+index 000000000000..615c620e70cf
 --- /dev/null
 +++ b/block/ssg-iosched.c
-@@ -0,0 +1,1052 @@
+@@ -0,0 +1,1053 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + *  SamSung Generic I/O scheduler
@@ -872,8 +879,8 @@ index 000000000000..a103ec6bfbdd
 +
 +static void ssg_set_shallow_depth(struct ssg_data *ssg, struct blk_mq_tags *tags)
 +{
-+	unsigned int depth = tags->bitmap_tags->sb.depth;
-+	unsigned int map_nr = tags->bitmap_tags->sb.map_nr;
++	unsigned int depth = tags->bitmap_tags.sb.depth;
++	unsigned int map_nr = tags->bitmap_tags.sb.map_nr;
 +
 +	ssg->max_async_write_rqs = depth * max_async_write_ratio / 100U;
 +	ssg->max_async_write_rqs =
@@ -891,7 +898,7 @@ index 000000000000..a103ec6bfbdd
 +	struct request_queue *q = hctx->queue;
 +	struct ssg_data *ssg = q->elevator->elevator_data;
 +	struct blk_mq_tags *tags = hctx->sched_tags;
-+	unsigned int depth = tags->bitmap_tags->sb.depth;
++	unsigned int depth = tags->bitmap_tags.sb.depth;
 +
 +	ssg->congestion_threshold_rqs = depth * congestion_threshold / 100U;
 +
@@ -902,7 +909,7 @@ index 000000000000..a103ec6bfbdd
 +		ssg->rq_info = NULL;
 +
 +	ssg_set_shallow_depth(ssg, tags);
-+	sbitmap_queue_min_shallow_depth(tags->bitmap_tags,
++	sbitmap_queue_min_shallow_depth(&tags->bitmap_tags,
 +			ssg->async_write_shallow_depth);
 +
 +	ssg_blkcg_depth_updated(hctx);
@@ -969,7 +976,7 @@ index 000000000000..a103ec6bfbdd
 +	struct blk_mq_tags *tags = hctx->sched_tags;
 +
 +	ssg_set_shallow_depth(ssg, tags);
-+	sbitmap_queue_min_shallow_depth(tags->bitmap_tags,
++	sbitmap_queue_min_shallow_depth(&tags->bitmap_tags,
 +			ssg->async_write_shallow_depth);
 +
 +	return 0;
@@ -1059,7 +1066,6 @@ index 000000000000..a103ec6bfbdd
 +
 +			if (blk_discard_mergable(__rq))
 +				return ELEVATOR_DISCARD_MERGE;
-+
 +			return ELEVATOR_FRONT_MERGE;
 +		}
 +	}
@@ -1093,7 +1099,7 @@ index 000000000000..a103ec6bfbdd
 +	struct request_queue *q = hctx->queue;
 +	struct ssg_data *ssg = q->elevator->elevator_data;
 +	const int data_dir = rq_data_dir(rq);
-+
++	LIST_HEAD(free);
 +
 +	/*
 +	 * This may be a requeue of a write request that has locked its
@@ -1101,8 +1107,10 @@ index 000000000000..a103ec6bfbdd
 +	 */
 +	blk_req_zone_write_unlock(rq);
 +
-+	if (blk_mq_sched_try_insert_merge(q, rq))
++	if (blk_mq_sched_try_insert_merge(q, rq)) {
++		blk_mq_free_requests(&free);
 +		return;
++	}
 +
 +	blk_mq_sched_request_inserted(rq);
 +
@@ -1149,7 +1157,7 @@ index 000000000000..a103ec6bfbdd
 + * Nothing to do here. This is defined only to ensure that .finish_request
 + * method is called upon request completion.
 + */
-+static void ssg_prepare_request(struct request *rq)
++static void ssg_prepare_request(struct request *rq, struct bio *bio)
 +{
 +	struct ssg_data *ssg = rq->q->elevator->elevator_data;
 +	struct ssg_request_info *rqi;
