@@ -92,32 +92,43 @@ git apply ../0001-no-dirty-flag.patch
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-else
-  echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+#else
+  # TODO: Manual hook only
+  #echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  #echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 fi
 
 cd $BASE_PATH
 
 #SUSFS
 if [[ $SUSFS == "true" ]]; then
-  echo "[!] Starting from 2.0.0, SUSFS only uses inline hooks. It is independent of KSU hook method."
-  echo ">clone SUSFS and patch the kernel"
-  git clone --branch gki-android12-5.10 https://gitlab.com/simonpunk/susfs4ksu susfs
+  #echo "[!] Starting from 2.0.0, SUSFS inline hooks will result in bootloop. Forced to use manual hook instead."
+  #echo ">clone SUSFS and patch the kernel"
+  #git clone --branch gki-android12-5.10 https://gitlab.com/simonpunk/susfs4ksu susfs
 
-  cd susfs
-  git reset --hard $SUSFS_COMMIT
-  cd $BASE_PATH
+  #cd susfs
+  #git reset --hard $SUSFS_COMMIT
+  #cd $BASE_PATH
 
   # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
-  cp susfs/kernel_patches/fs/* kernel/fs/
-  cp susfs/kernel_patches/include/linux/* kernel/include/linux/
+  #cp susfs/kernel_patches/fs/* kernel/fs/
+  #cp susfs/kernel_patches/include/linux/* kernel/include/linux/
+  #cd kernel
+
+  #git apply ../0002-50_add_susfs_in_kernel-5.4.patch
+
+  #echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  #echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  #cd $BASE_PATH
+
+  echo "[!] Using SUSFS with manual hook"
+  echo ">clone SUSFS and patch the kernel"
   cd kernel
-
-  git apply ../0002-50_add_susfs_in_kernel-5.4.patch
-
+  git apply ../0005-add-susfs-with-manual-hook.patch
   echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_SUSFS_SUS_PATH=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   cd $BASE_PATH
 fi
 
