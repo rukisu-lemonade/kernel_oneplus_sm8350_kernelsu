@@ -5,6 +5,7 @@ WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
 
+KERNEL_COMMIT=5fc1b4cd451b5e6ff91420174d090e32b7fb0884
 SUKISU_SUSFS_VARIANT_COMMIT=9ff378163b779ddf6044fb52954b5910ef19bd84
 SUSFS_COMMIT=4abb488c0aea9fb1f2b6db23ef0bce37a0be3ddd
 while [[ $# -gt 0 ]]; do
@@ -60,6 +61,7 @@ cd $BASE_PATH
 #kernel
 echo ">clone kernel source"
 git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
+git reset --hard $KERNEL_COMMIT
 cd $BASE_PATH
 
 #Samsung SSG IO Schedular
