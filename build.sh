@@ -127,6 +127,9 @@ if [[ $SUSFS == "true" ]]; then
   git apply ../0005-add-susfs-with-manual-hook.patch
   echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_SUSFS_SUS_PATH=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   cd $BASE_PATH

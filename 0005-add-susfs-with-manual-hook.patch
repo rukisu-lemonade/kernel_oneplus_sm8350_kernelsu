@@ -1,30 +1,3 @@
-diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 45fdb9bdf08d..db46b786242c 100644
---- a/drivers/input/input.c
-+++ b/drivers/input/input.c
-@@ -441,11 +441,22 @@ static void input_handle_event(struct input_dev *dev,
-  * to 'seed' initial state of a switch or initial position of absolute
-  * axis, etc.
-  */
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+extern bool ksu_input_hook __read_mostly;
-+extern __attribute__((cold)) int ksu_handle_input_handle_event(
-+			unsigned int *type, unsigned int *code, int *value);
-+#endif
-+
- void input_event(struct input_dev *dev,
- 		 unsigned int type, unsigned int code, int value)
- {
- 	unsigned long flags;
- 
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+	if (unlikely(ksu_input_hook))
-+		ksu_handle_input_handle_event(&type, &code, &value);
-+#endif
-+
- 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
- 
- 		spin_lock_irqsave(&dev->event_lock, flags);
 diff --git a/fs/Kconfig b/fs/Kconfig
 index 8ee84321335f..f14142f0e7de 100644
 --- a/fs/Kconfig
@@ -570,29 +543,6 @@ index 3f9f5fda8ebf..0ace40c48fd0 100644
 +	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 +#endif
  	return do_faccessat(dfd, filename, mode);
- }
- 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 93d06b4c5f78..556c6c6fbc83 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -592,8 +592,18 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
- 	return ret;
- }
- 
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+extern bool ksu_init_rc_hook __read_mostly;
-+extern __attribute__((cold)) int ksu_handle_sys_read(unsigned int fd,
-+				char __user **buf_ptr, size_t *count_ptr);
-+#endif
-+
- SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
- {
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+	if (unlikely(ksu_init_rc_hook)) 
-+		ksu_handle_sys_read(fd, &buf, &count);
-+#endif
- 	return ksys_read(fd, buf, count);
  }
  
 diff --git a/fs/readdir.c b/fs/readdir.c
@@ -1874,33 +1824,25 @@ index 790c2f514a55..9edbaf464ed6 100644
  	if (!ns_capable(pid_ns->user_ns, CAP_SYS_BOOT))
  		return -EPERM;
 diff --git a/kernel/sys.c b/kernel/sys.c
-index fa3f48a51aa9..159e97db630f 100644
+index fa3f48a51aa9..7f378a8b5b10 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -617,6 +617,13 @@ SYSCALL_DEFINE1(setuid, uid_t, uid)
+@@ -617,6 +617,9 @@ SYSCALL_DEFINE1(setuid, uid_t, uid)
  	return __sys_setuid(uid);
  }
  
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+extern int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid);
-+#endif
-+
 +#ifdef CONFIG_SUSFS
 +extern int susfs_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid);
 +#endif
  
  /*
   * This function implements a generic ability to update ruid, euid,
-@@ -630,6 +637,14 @@ long __sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+@@ -630,6 +633,10 @@ long __sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
  	int retval;
  	kuid_t kruid, keuid, ksuid;
  
 +#ifdef CONFIG_SUSFS
 +       (void)susfs_handle_setresuid(ruid, euid, suid);
-+#endif
-+
-+#ifdef CONFIG_KSU_MANUAL_HOOK
-+       (void)ksu_handle_setresuid(ruid, euid, suid);
 +#endif
 +
  	kruid = make_kuid(ns, ruid);
