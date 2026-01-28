@@ -86,7 +86,13 @@ if [[ $SUSFS == "true" ]]; then
   curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
 else
   curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s builtin
+  git apply ../0006-kernelsu-manual-hook.patch
 fi
+echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 git apply ../0001-no-dirty-flag.patch
 
 # tracepoint patchset
@@ -102,34 +108,10 @@ cd $BASE_PATH
 
 #SUSFS
 if [[ $SUSFS == "true" ]]; then
-  #echo "[!] Starting from 2.0.0, SUSFS inline hooks will result in bootloop. Forced to use manual hook instead."
-  #echo ">clone SUSFS and patch the kernel"
-  #git clone --branch gki-android12-5.10 https://gitlab.com/simonpunk/susfs4ksu susfs
-
-  #cd susfs
-  #git reset --hard $SUSFS_COMMIT
-  #cd $BASE_PATH
-
-  # Include susfs. Copied from https://gitlab.com/simonpunk/susfs4ksu/-/blob/kernel-5.4/README.md
-  #cp susfs/kernel_patches/fs/* kernel/fs/
-  #cp susfs/kernel_patches/include/linux/* kernel/include/linux/
-  #cd kernel
-
-  #git apply ../0002-50_add_susfs_in_kernel-5.4.patch
-
-  #echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  #echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  #cd $BASE_PATH
-
   echo "[!] Using SUSFS with manual hook"
   echo ">clone SUSFS and patch the kernel"
   cd kernel
   git apply ../0005-add-susfs-with-manual-hook.patch
-  echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_SUSFS_SUS_PATH=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   cd $BASE_PATH
