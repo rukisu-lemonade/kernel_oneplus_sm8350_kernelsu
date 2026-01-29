@@ -4,6 +4,7 @@ SUSFS=false
 WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
+SSG_SCHEDULAR=false
 
 KERNEL_COMMIT=5fc1b4cd451b5e6ff91420174d090e32b7fb0884
 SUKISU_SUSFS_VARIANT_COMMIT=9ff378163b779ddf6044fb52954b5910ef19bd84
@@ -65,12 +66,14 @@ git reset --hard $KERNEL_COMMIT
 cd $BASE_PATH
 
 #Samsung SSG IO Schedular
-echo ">adding samsung ssg io schedular..."
-cd kernel
-git apply ../0004-Add-SSG-IO-Schedular.patch
-echo "CONFIG_MQ_IOSCHED_SSG=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_MQ_IOSCHED_SSG_CGROUP=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-cd $BASE_PATH
+if [[ $SSG_SCHEDULAR == "true" ]]; then
+  echo ">adding samsung ssg io schedular..."
+  cd kernel
+  git apply ../0004-Add-SSG-IO-Schedular.patch
+  echo "CONFIG_MQ_IOSCHED_SSG=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_MQ_IOSCHED_SSG_CGROUP=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  cd $BASE_PATH
+fi
 
 #Scoped Hook
 if [[ $SCOPED_HOOK == "true" ]]; then
