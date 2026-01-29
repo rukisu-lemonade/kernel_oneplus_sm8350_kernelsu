@@ -61,7 +61,7 @@ cd $BASE_PATH
 
 #kernel
 echo ">clone kernel source"
-git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
+git clone https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
 git reset --hard $KERNEL_COMMIT
 cd $BASE_PATH
 
