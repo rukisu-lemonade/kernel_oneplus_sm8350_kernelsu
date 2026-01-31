@@ -91,22 +91,22 @@ if [[ $SUSFS == "true" ]]; then
   curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
 else
   curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s builtin
-  git apply ../0006-kernelsu-manual-hook.patch
 fi
 echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 git apply ../0001-no-dirty-flag.patch
 
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
+  git apply ../0003-tracepoint-patchset.patch
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-#else
-  # TODO: Manual hook only
-  #echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  #echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+else
+  git apply ../0006-kernelsu-manual-hook.patch
+  echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 fi
 
 cd $BASE_PATH
