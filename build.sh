@@ -7,8 +7,7 @@ TRACEPOINT_HOOK=false
 SSG_SCHEDULAR=false
 
 KERNEL_COMMIT=5fc1b4cd451b5e6ff91420174d090e32b7fb0884
-SUKISU_SUSFS_VARIANT_COMMIT=9ff378163b779ddf6044fb52954b5910ef19bd84
-SUSFS_COMMIT=4abb488c0aea9fb1f2b6db23ef0bce37a0be3ddd
+RESUKISU_COMMIT=ed7e9f7dcbef4d1089e78ff899a408c4743527a5
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
@@ -17,6 +16,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --scoped-hook)
       SCOPED_HOOK=true
+      shift # past argument
+      ;;
+    --ssg)
+      SSG_SCHEDULAR=true
       shift # past argument
       ;;
     --tracepoint-hook)
@@ -87,21 +90,27 @@ fi
 #KernelSU
 echo ">clone KernelSU and patch the kernel"
 cd kernel
-if [[ $SUSFS == "true" ]]; then
-  curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s $SUKISU_SUSFS_VARIANT_COMMIT
-else
-  curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s builtin
-fi
+curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSu/main/kernel/setup.sh" | bash -s $RESUKISU_COMMIT
 echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 git apply ../0001-no-dirty-flag.patch
 
 # tracepoint patchset
 if [[ $TRACEPOINT_HOOK == "true" ]]; then
+  echo "[!] Using tracehook"
   git apply ../0003-tracepoint-patchset.patch
   echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_MANUAL_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+elif [[ $SUSFS == "true" ]]; then
+  echo "[!] Using SUSFS with manual hook"
+  git apply ../0005-add-susfs-with-manual-hook.patch
+  echo "CONFIG_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  echo "CONFIG_SUSFS_SUS_PATH=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
 else
+  echo "[!] Using manual hook"
   git apply ../0006-kernelsu-manual-hook.patch
+fi
+
+if [[ $TRACEPOINT_HOOK != "true" ]]; then
   echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
@@ -110,17 +119,6 @@ else
 fi
 
 cd $BASE_PATH
-
-#SUSFS
-if [[ $SUSFS == "true" ]]; then
-  echo "[!] Using SUSFS with manual hook"
-  echo ">clone SUSFS and patch the kernel"
-  cd kernel
-  git apply ../0005-add-susfs-with-manual-hook.patch
-  echo "CONFIG_SUSFS=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_SUSFS_SUS_PATH=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  cd $BASE_PATH
-fi
 
 #WireGuard
 if [[ $WIREGUARD == "true" ]]; then
