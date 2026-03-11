@@ -65,6 +65,7 @@ cd $BASE_PATH
 #kernel
 echo ">clone kernel source"
 git clone https://github.com/LineageOS/android_kernel_oneplus_sm8350 kernel
+cd kernel
 git reset --hard $KERNEL_COMMIT
 cd $BASE_PATH
 
@@ -113,9 +114,12 @@ fi
 if [[ $TRACEPOINT_HOOK != "true" ]]; then
   echo "CONFIG_KSU_TRACEPOINT_HOOK=N" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
-  echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+
+  if [[ $SUSFS != "true" ]]; then
+    echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INPUT_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+    echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+    echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
+  fi
 fi
 
 cd $BASE_PATH
