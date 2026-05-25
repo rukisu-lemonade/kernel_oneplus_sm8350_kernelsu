@@ -7,7 +7,7 @@ TRACEPOINT_HOOK=false
 SSG_SCHEDULAR=false
 
 KERNEL_COMMIT=21b3312486b813d081895da77d6d6e3a27ab5d54
-RESUKISU_COMMIT=27c41151cfcfd37f7db336332c6c573429a656d0
+RESUKISU_COMMIT=6ee2f7fd5b3ff0a936cd39f88c9eacab698afc29
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
