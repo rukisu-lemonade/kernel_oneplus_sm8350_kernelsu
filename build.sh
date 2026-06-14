@@ -58,7 +58,7 @@ mkdir toolchain
 cd toolchain
 curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
 chmod +x ./antman
-./antman -S
+./antman -S=10032024
 ./antman --patch=glibc
 cd $BASE_PATH
 
