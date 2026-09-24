@@ -5,9 +5,11 @@ WIREGUARD=false
 SCOPED_HOOK=false
 TRACEPOINT_HOOK=false
 SSG_SCHEDULAR=false
+NO_MOUNT=true
 
 KERNEL_COMMIT=9ae71884fd31da3ecc2269ec039586bdf87de8ae
 RESUKISU_COMMIT=bc8846b7d4105c10a4a38bb9874fa5528129a35e
+NOMOUNT_COMMIT=b8d268353b4e7ecc53c67d1816a626b7d6579201
 while [[ $# -gt 0 ]]; do
   case $1 in
     --with-susfs)
@@ -120,6 +122,10 @@ if [[ $TRACEPOINT_HOOK != "true" ]]; then
     echo "CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
     echo "CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK=y" >> arch/arm64/configs/vendor/lahaina-qgki_defconfig
   fi
+fi
+
+if [[ $NO_MOUNT == "true" ]]; then
+  curl "https://raw.githubusercontent.com/maxsteeel/nomount/$NOMOUNT_COMMIT/kernel/setup.sh" | bash -s $NOMOUNT_COMMIT
 fi
 
 cd $BASE_PATH
